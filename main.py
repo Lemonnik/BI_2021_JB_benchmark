@@ -18,7 +18,7 @@ import torch
 import torch_geometric
 
 #
-from utils.py import LoadDavis
+from utils import LoadDavis
 from torch_geometric.loader import DataLoader
 import DistMult
 import NFM
