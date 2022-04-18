@@ -8,17 +8,6 @@ from pybiomed_helper import CalculateConjointTriad
 
 
 
-from torch_geometric.data import Dataset
-# ДЛЯ КОДИРОВАНИЯ ЛЕКАРСТВ 
-from rdkit.Chem import AllChem
-from rdkit import DataStructs
-# ДЛЯ КОДИРОВАНИЯ БЕЛКОВ 
-!wget 'https://raw.githubusercontent.com/kexinhuang12345/DeepPurpose/4e74421104b854aa241b9d7d12f4a3cbd51d034f/DeepPurpose/pybiomed_helper.py' -q
-!touch __init__.py
-from pybiomed_helper import CalculateConjointTriad
-
-
-
 class LoadDavis(Dataset):
     def __init__(self, mode='train', return_type = 'ind'):
         '''
