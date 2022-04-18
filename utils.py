@@ -1,10 +1,21 @@
 #
 from torch_geometric.data import Dataset
 # ДЛЯ КОДИРОВАНИЯ ЛЕКАРСТВ 
+# rdkit
+import rdkit
+from rdkit import Chem
+from rdkit.Chem import Draw
 from rdkit.Chem import AllChem
 from rdkit import DataStructs
 # ДЛЯ КОДИРОВАНИЯ БЕЛКОВ 
 from pybiomed_helper import CalculateConjointTriad
+
+import numpy as np
+import pandas as pd
+
+import torch
+
+
 
 
 

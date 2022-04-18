@@ -1,4 +1,5 @@
 import torch.nn as nn
+import torch
 
 class NFM(nn.Module):
     def __init__(self, num_features, num_factors, layers, batch_norm, drop_prob):

@@ -20,8 +20,8 @@ import torch_geometric
 #
 from utils import LoadDavis
 from torch_geometric.loader import DataLoader
-import DistMult
-import NFM
+from DistMult import DistMult
+from NFM import NFM
 
 
 # 
@@ -56,10 +56,10 @@ if __name__ == '__main__':
     torch.manual_seed(RANDOM_SEED)
     BATCH_SIZE = 64
     DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
-    N_EPOCHS = 10
+    N_EPOCHS = 5
     LEARNING_RATE = 0.0007
 
-    DISTMULT_DIM = 100
+    DISTMULT_DIM = 64
 
 
     # инициализируем модель
@@ -70,7 +70,8 @@ if __name__ == '__main__':
     optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE)
 
     # по возможности обучать на GPU
-    model = model.to(device)
+    model = model.to(DEVICE)
+
 
     # тренировочный цикл
     print("Starting training DistMult...")
@@ -83,10 +84,10 @@ if __name__ == '__main__':
         for i, (drugs, targets, labels) in enumerate(loader):  
             optimizer.zero_grad() 
 
-            score = model(drugs.to(device).long(), targets.to(device).long(), labels.to(device).long())
+            score = model(drugs.to(DEVICE).long(), targets.to(DEVICE).long(), labels.to(DEVICE).long())
 
             # надо ли накидывать сигмоиду/softplus? работает ли лосс функция только с логитами?
-            # loss = torch.mean(nn.functional.softplus(- labels.to(device).long() * score))
+            # loss = torch.mean(nn.functional.softplus(- labels.to(DEVICE).long() * score))
             # loss = loss_fn(torch.sigmoid(score), labels)
             loss = loss_fn(score, labels)  
 
@@ -94,7 +95,7 @@ if __name__ == '__main__':
             optimizer.step()  
 
         losses.append(loss)
-        if epoch % 10 == 0:
+        if epoch % 1 == 0:
             print(f"Epoch {epoch} | Train Loss {loss:.4f}")
 
 
@@ -119,7 +120,7 @@ if __name__ == '__main__':
     # BATCH_SIZE_NFM = 
 
 
-    # инициализируем модель (TODO: задать 1495 через переменную)
+    # инициализируем модель (TODO: задать 1495 через переменную -- DISTMULT_DIM*2 + n_features для белков и лекарств) 
     model_nfm = NFM(1495, NUM_FACTORS, LAYERS, BATCH_NORM, DROPOUT)
 
     # настраиваем loss-функцию и оптимизатор 
@@ -127,7 +128,7 @@ if __name__ == '__main__':
     optimizer_nfm  = torch.optim.Adam(model_nfm.parameters(), lr=LEARNING_RATE)
 
     # по возможности обучать на GPU
-    model_nfm = model_nfm.to(device)
+    model_nfm = model_nfm.to(DEVICE)
     
     # тренировочный цикл
     print("Starting training NFM...")
@@ -140,8 +141,8 @@ if __name__ == '__main__':
         for features, label in nfm_loader:
             optimizer_nfm.zero_grad()
 
-            features_non_zero = torch.tensor(list(range(features.shape[1])), dtype=torch.int)  # пока что фиктивный признак, выбираются все
-            prediction = model_nfm(features_non_zero.to(device).long(), features.to(device).long())  # 
+            features_non_zero = torch.tensor(list(range(features.shape[1])), dtype=torch.int)#.repeat(BATCH_SIZE, 1)  # пока что фиктивный признак, выбираются все
+            prediction = model_nfm(features_non_zero.to(DEVICE).long(), features.to(DEVICE).long())  # 
             # loss = loss_fn_nfm(torch.sigmoid(prediction), label) 
             loss = loss_fn_nfm(prediction, label) 
             # loss += 0.001 * model_nfm.embeddings.weight.norm()
