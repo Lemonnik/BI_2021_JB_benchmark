@@ -1,0 +1,21 @@
+model:
+  kge:
+    batch_size: 64
+    embed_dim: 100
+    epoch: 15
+    lr: 0.7e-3
+    save_dir: 'models/kge/'
+
+  nfm:
+    batch_size: 64
+    embed_dim: 100
+    layers: [256, 128, 64]
+    batch_norm: False
+    dropout: [0.2, 0.2]
+    epoch: 10
+    lr: 0.7e-3
+    save_dir: 'models/nfm/'
+
+run_args:
+  seed: 42
+  gpu: True
