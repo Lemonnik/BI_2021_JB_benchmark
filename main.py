@@ -1,36 +1,39 @@
+import hydra
+from omegaconf import DictConfig, OmegaConf
 import numpy as np
 import pandas as pd
-import seaborn as sns
-
 from tqdm import trange
-
-# rdkit
+import wandb
+import time
+import os
 import rdkit
-from rdkit import Chem
-from rdkit.Chem import Draw
-
-# deepchem
-import deepchem as dc
-from deepchem.models import GCNModel
-
-# torch
 import torch
-import torch_geometric
+from torch.utils.data import DataLoader
+from sklearn.metrics import accuracy_score
+from sklearn.preprocessing import MinMaxScaler
 
-#
 from utils import LoadDavis
-from torch_geometric.loader import DataLoader
 from DistMult import DistMult
 from NFM import NFM
 
 
-# 
-from sklearn.preprocessing import MinMaxScaler
-
 def prepare_embs(model_name, target_indexes, drug_indexes):
     '''
-    получить из модели эмбеддинги и склеить их
-    output: (n_relations x DISTMULT_DIM*2)
+    Combine KGE model embeddings and drugs/proteins encoding.
+
+    Parameters
+    ----------
+    model_name : KGE model
+        Models from which embeddings will be extracted.
+    target_indexes : list
+        Indicies of proteins.
+    drug_indexes : list
+        Indicies of drugs.
+    
+    Returns
+    -------
+    emb_features: array[n_relations + DistMult_dimension*2]
+        Combined KGE model embeddings and drugs/proteins encoding.
     '''
     head_emb = model_name.get_embeddings(target_indexes)
     tail_emb = model_name.get_embeddings(drug_indexes)
@@ -43,115 +46,135 @@ def prepare_embs(model_name, target_indexes, drug_indexes):
     return emb_features
 
 
-
-if __name__ == '__main__':
-    # TODO: парсинг аргументов argparse?
-
-    # загрузить датасет
+@hydra.main(config_path="config", config_name="config")
+def main(cfg : DictConfig) -> None:
+    # Load dataset
     davis = LoadDavis()
 
+    wandb.init(project="gpt-3")
+
+    # Path to save checkpoints later
+    curr_date = time.strftime('%d-%m-%Y')
+    curr_time = time.strftime('%H-%M-%S')
+    model_save_path = f'{curr_date}/{curr_time}'
+
     ################################################# DistMult #################################################
-    # гиперпараметры
-    RANDOM_SEED = 42
-    torch.manual_seed(RANDOM_SEED)
-    BATCH_SIZE = 64
-    DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
-    N_EPOCHS = 5
-    LEARNING_RATE = 0.0007
+    # Define SEED and DEVICE
+    torch.manual_seed(cfg.run_args.seed)
+    if cfg.run_args.gpu:
+        DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
 
-    DISTMULT_DIM = 64
-
-
-    # инициализируем модель
-    model = DistMult(davis.n_entities, davis.n_relations, DISTMULT_DIM)
-
-    # настраиваем loss-функцию и оптимизатор
+    # Initialize KGE model
+    model = DistMult(davis.n_entities, davis.n_relations, cfg.model.kge.embed_dim)
+    config = wandb.config
+    wandb.watch(model)
+    # Define Loss-function and Optimizer
     loss_fn = torch.nn.MSELoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE)
+    optimizer = torch.optim.Adam(model.parameters(), lr=cfg.model.kge.lr)
 
-    # по возможности обучать на GPU
+    # Train on GPU if possible
     model = model.to(DEVICE)
 
 
-    # тренировочный цикл
+    # TRAINING CYCLE
     print("Starting training DistMult...")
     model.train()
     davis.return_type = 'ind'
-    loader = DataLoader(davis, batch_size=BATCH_SIZE)
-    losses = []
+    loader = DataLoader(davis, batch_size=cfg.model.kge.batch_size, pin_memory=True)
 
-    for epoch in range(N_EPOCHS):
-        for i, (drugs, targets, labels) in enumerate(loader):  
+    for epoch in range(cfg.model.kge.epoch):
+
+        running_score = 0
+        n_batches = 0
+        running_loss = 0
+
+        for drugs, targets, labels in loader:  
             optimizer.zero_grad() 
 
-            score = model(drugs.to(DEVICE).long(), targets.to(DEVICE).long(), labels.to(DEVICE).long())
+            score = model(drugs.long(), targets.long(), labels.long())
+            loss = loss_fn(score, labels)
 
-            # надо ли накидывать сигмоиду/softplus? работает ли лосс функция только с логитами?
-            # loss = torch.mean(nn.functional.softplus(- labels.to(DEVICE).long() * score))
-            # loss = loss_fn(torch.sigmoid(score), labels)
-            loss = loss_fn(score, labels)  
+            # Statistics
+            running_loss += loss
+            predictions = np.array([int(j>0.5) for j in torch.sigmoid(score).detach().numpy()])
+            running_score += accuracy_score(labels.numpy(), predictions)
+            n_batches += 1
 
             loss.backward()
             optimizer.step()  
 
-        losses.append(loss)
+        # Print epoch results
         if epoch % 1 == 0:
-            print(f"Epoch {epoch} | Train Loss {loss:.4f}")
+            wandb.log({"loss": running_loss/n_batches})
+            print(f"Epoch {epoch:>3} | Train Loss {running_loss/n_batches:.4f} | Accuracy {running_score/n_batches:.4f}")
 
+    wandb.finish()
+    # Save model state
+    kge_path = os.path.join(model_save_path, cfg.model.kge.save_dir)
+    os.makedirs(kge_path, exist_ok=True)
+    torch.save(model.state_dict(), f'{kge_path}/checkpoint.pth')
 
     #################################################   PCA   #################################################
 
-    # сворачиваем фичи белков/лекарств или же эмбеддинги тоже есть смысл сворачивать?
+    # NOT IMPLEMENTED
 
 
     #################################################   NFM   #################################################
-    # получить эмбеддинги для всех элементов датасета и записать их в наш датасет
+    # Get DistMult embeddings and write them in davis dataset
     embs = prepare_embs(model, davis.dataset.Targ_IND.values, davis.dataset.Drug_IND.values)
     davis.add_feature('embeddings', embs.tolist())
-    
 
-    # ГИПЕРПАРАМЕТРЫ (TODO: словарь?; свои lr, число эпох и т.п.)
-    NUM_FACTORS = 100         # "глубина"
-    LAYERS = [512, 256, 128]  # слои
-    BATCH_NORM = True
-    DROPOUT = [0.2, 0.2]      # дропаут после этапов FM и MLP
-    # LEARNING_RATE_NFM =     # (убрать одинаковые названия переменных)
-    # N_EPOCHS_NFM =  
-    # BATCH_SIZE_NFM = 
+    # total_features = DISTMULT_DIM*2 (heads + tails) + 2124
+    # (2124 = 1023 drug features in Morgan Fingerprint + 101 protein features)
+    total_features = cfg.model.kge.embed_dim * 2 + 2124
+    # Initialize NFM model
+    model_nfm = NFM(total_features, cfg.model.nfm.embed_dim, cfg.model.nfm.layers, cfg.model.nfm.batch_norm, cfg.model.nfm.dropout)
 
-
-    # инициализируем модель (TODO: задать 1495 через переменную -- DISTMULT_DIM*2 + n_features для белков и лекарств) 
-    model_nfm = NFM(1495, NUM_FACTORS, LAYERS, BATCH_NORM, DROPOUT)
-
-    # настраиваем loss-функцию и оптимизатор 
+    # Define Loss-function and Optimizer
     loss_fn_nfm  = torch.nn.MSELoss()
-    optimizer_nfm  = torch.optim.Adam(model_nfm.parameters(), lr=LEARNING_RATE)
+    optimizer_nfm  = torch.optim.Adam(model_nfm.parameters(), lr=cfg.model.nfm.lr)
 
-    # по возможности обучать на GPU
+    # Train on GPU if possible
     model_nfm = model_nfm.to(DEVICE)
     
-    # тренировочный цикл
-    print("Starting training NFM...")
+    # TRAINING CYCLE
+    print("\nStarting training NFM...")
     model_nfm.train()
-    davis.return_type = 'encoding'  # меняем тип возвращаемых элементов с (drugs, targets, labels) на (features, labels)
-    nfm_loader = DataLoader(davis, batch_size=BATCH_SIZE)
-    losses_nfm = []
+    davis.return_type = 'encoding'  # change __getitem__ returns from (drugs, targets, labels) to (features, labels)
+    nfm_loader = DataLoader(davis, batch_size=cfg.model.nfm.batch_size, drop_last=True, pin_memory=True)
 
-    for epoch in range(N_EPOCHS):
-        for features, label in nfm_loader:
+    for epoch in range(cfg.model.nfm.epoch):
+
+        running_score = 0
+        n_batches = 0
+        running_loss = 0
+
+        for features, labels in nfm_loader:
             optimizer_nfm.zero_grad()
 
-            features_non_zero = torch.tensor(list(range(features.shape[1])), dtype=torch.int)#.repeat(BATCH_SIZE, 1)  # пока что фиктивный признак, выбираются все
-            prediction = model_nfm(features_non_zero.to(DEVICE).long(), features.to(DEVICE).long())  # 
-            # loss = loss_fn_nfm(torch.sigmoid(prediction), label) 
-            loss = loss_fn_nfm(prediction, label) 
-            # loss += 0.001 * model_nfm.embeddings.weight.norm()
+            features_non_zero = torch.tensor(list(range(features.shape[1])), dtype=torch.int).repeat(cfg.model.nfm.batch_size, 1)
+            score = model_nfm(features_non_zero.long(), features.long())
+
+            loss = loss_fn_nfm(score, labels) 
+
+            # Statistics
+            running_loss += loss
+            predictions = np.array([int(j>0.5) for j in torch.sigmoid(score).detach().numpy()])
+            running_score += accuracy_score(labels.numpy(), predictions)
+            n_batches += 1
 
             loss.backward()
             optimizer_nfm.step()
 
-            losses_nfm.append(loss)
+        # Print epoch results
+        if epoch % 1 == 0:
+            print(f"Epoch {epoch:>3} | Train Loss {running_loss/n_batches:.4f} | Accuracy {running_score/n_batches:.4f}")
 
-        losses_nfm.append(loss)
-        if epoch % 10 == 0:
-            print(f"Epoch {epoch} | Train Loss {loss:.4f}")
+    # Save model state
+    nfm_path = os.path.join(model_save_path, cfg.model.nfm.save_dir)
+    os.makedirs(nfm_path, exist_ok=True)
+    torch.save(model.state_dict(), f'{nfm_path}/checkpoint.pth')
+
+
+if __name__ == '__main__':
+    main()
