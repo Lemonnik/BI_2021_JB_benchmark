@@ -8,6 +8,7 @@ from rdkit.Chem import AllChem
 from rdkit import DataStructs
 from pybiomed_helper import CalculateConjointTriad
 from utils import encode_drugs, encode_targets
+from sklearn.preprocessing import LabelEncoder
 
 class LoadDavisOrDB(Dataset):
     '''
@@ -45,24 +46,37 @@ class LoadDavisOrDB(Dataset):
             dataFolder = 'https://raw.githubusercontent.com/kexinhuang12345/MolTrans/master/dataset/DAVIS/'
         elif df == 'bindingDB':
             dataFolder = 'https://raw.githubusercontent.com/kexinhuang12345/MolTrans/master/dataset/BindingDB/'
-        davis_train = pd.read_csv(dataFolder + '/train.csv', index_col=0)
-        davis_test = pd.read_csv(dataFolder + '/test.csv', index_col=0)
-        davis_val = pd.read_csv(dataFolder + '/val.csv', index_col=0)
-        davis = davis_train.append(davis_test, ignore_index=True).append(davis_val, ignore_index=True).drop_duplicates(ignore_index=True)
+        dataset_train = pd.read_csv(dataFolder + '/train.csv', index_col=0)
+        dataset_test = pd.read_csv(dataFolder + '/test.csv', index_col=0)
+        dataset_val = pd.read_csv(dataFolder + '/val.csv', index_col=0)
+        dataset = dataset_train.append(dataset_test, ignore_index=True).append(dataset_val, ignore_index=True).drop_duplicates(ignore_index=True)
 
-        self.dataset = davis                                          # full dataset
+        self.dataset = dataset                                        # full dataset
         self.drug_col = 'SMILES'
         self.target_col = 'Target Sequence'
         self.label_col = 'Label'
 
         self.n_relations = len(self.dataset)                          # number of relations (drug-target interactions)
-        self.n_drugs = len(self.dataset[self.drug_col].unique())      # number of drugs
-        self.n_prots = len(self.dataset[self.target_col].unique())    # number of proteins (targets)
-        self.n_entities = self.n_drugs + self.n_prots                 # number of graph nodes (drugs and targets)
+        drugs = self.dataset[self.drug_col].unique()
+        self.n_drugs = len(drugs)                                     # number of drugs
+        prots = self.dataset[self.target_col].unique()
+        self.n_prots = len(prots)                                     # number of proteins (targets)
+        self.entities = np.append(drugs, prots)                                 # all unique graph nodes (drugs and targets)
+        self.n_entities = len(self.entities)                          # number of graph nodes (drugs and targets)
 
         # Encode drugs and targets by ID's
-        # SHOULD BE REPLACED WITH LABEL_ENCODER()
-        self.entity_to_ind, self.ind_to_entity = self._encode_by_ind()
+        self.label_encoder = LabelEncoder()
+        self.label_encoder.fit(self.entities)
+            # get
+        d = self.dataset[self.drug_col].values
+        t = self.dataset[self.target_col].values
+            # encode
+        d = self.entity_to_ind(d)
+        t = self.entity_to_ind(t)
+            # save in dataset
+        self.dataset['DrugIND'] = d
+        self.dataset['ProtIND'] = t
+
         # Encode drugs and targets with some type of encoding
         self.drug_enc = drug_enc
         self.dataset['drug_encoding'] = encode_drugs(self.dataset[self.drug_col].to_list(), enc_type=self.drug_enc)
@@ -74,14 +88,6 @@ class LoadDavisOrDB(Dataset):
 
         # Return (drug index, target index, label) or (features, label) in __getitem__
         self.return_type = return_type
-
-        # 
-        d = self.dataset['Drug_IND'].values
-        t = self.dataset['Targ_IND'].values
-        i = self.dataset[self.label_col].values
-        self.d_ind = torch.tensor(d, dtype=torch.float32)
-        self.t_ind = torch.tensor(t, dtype=torch.float32)
-        self.i_ind = torch.tensor(i, dtype=torch.float32)
 
         # Embeddings + drug/prot features will be saved in this variable
         self.feat_enc = None
@@ -105,35 +111,20 @@ class LoadDavisOrDB(Dataset):
         self.dataset[feat_name] = feat_values
 
 
-    def get_entity_by_ind(self, i):
+    def ind_to_entity(self, ind: list):
         '''
-        Returns SMILES/Target Sequence by index.
+        Gets list of drugs/proteins ID's.
+        Returns SMILES strings/Target Sequences.
         '''
-        return self.ind_to_entity.get(i, None)
+        return np.array([self.label_encoder.classes_[i] for i in ind])
 
 
-    def get_ind_by_sequence(self, s):
+    def entity_to_ind(self, s: list):
         '''
-        Returns Drug/Protein index by it's SMILES/Target Sequence.
+        Gets list of SMILES strings/Target Sequences.
+        Returns their indexes (ID's).
         '''
-        return self.entity_to_ind.get(s, None)
-
-
-    def _encode_by_ind(self):
-        '''
-        Drug and Proteins encoding by ID's.
-        '''
-        # Encode
-        drug_encoding = {d:i for d,i in zip(self.dataset[self.drug_col].unique(), range(self.n_drugs))}
-        prot_encoding = {p:i for p,i in zip(self.dataset[self.target_col].unique(), range(self.n_drugs, self.n_drugs+self.n_prots))}
-        ind_encoding = {**drug_encoding, **prot_encoding}  # merge two dicts
-        reversed_encoding = {v: k for k, v in ind_encoding.items()}
-
-        # Add new column to dataset
-        self.dataset['Drug_IND'] = [drug_encoding[i] for i in self.dataset[self.drug_col]]
-        self.dataset['Targ_IND'] = [prot_encoding[i] for i in self.dataset[self.target_col]]
-
-        return ind_encoding, reversed_encoding
+        return self.label_encoder.transform(s)
 
 
     def __len__(self):
@@ -147,18 +138,23 @@ class LoadDavisOrDB(Dataset):
         '''
         # Return (drugs, targets, labels)
         if self.return_type == 'ind':
-            return self.d_ind[idx], self.t_ind[idx], self.i_ind[idx]
+            # get
+            d = self.dataset['DrugIND'].values[idx]
+            t = self.dataset['ProtIND'].values[idx]
+            i = self.dataset[self.label_col].values[idx]
+            # convert to tensor
+            d = torch.tensor(d, dtype=torch.float32)
+            t = torch.tensor(t, dtype=torch.float32)
+            i = torch.tensor(i, dtype=torch.float32)
+
+            return d, t, i
 
         # Return (features, labels)
         elif self.return_type == 'encoding':
             # if features (embeddings and features) not saved -- save them in self.feat_enc
-            if self.feat_enc is not None:
-                pass
-            else:
+            if self.feat_enc is None:
                 d = np.stack(self.dataset['drug_encoding'].values)
                 t = np.stack(self.dataset['target_encoding'].values)
-                i = self.dataset[self.label_col].values
-                i = torch.tensor(i, dtype=torch.float32)
 
                 if 'embeddings' in self.dataset.columns:
                     if 'embeddings_w_feats' not in self.dataset.columns:
@@ -172,4 +168,7 @@ class LoadDavisOrDB(Dataset):
                     return None
                 self.feat_enc = feats_and_embs
 
-            return self.feat_enc[idx, :], self.i_ind[idx]
+            i = self.dataset[self.label_col].values[idx]
+            i = torch.tensor(i, dtype=torch.float32)
+
+            return self.feat_enc[idx, :], i
