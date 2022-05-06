@@ -19,3 +19,6 @@ model:
 run_args:
   seed: 42
   gpu: True
+  dataset: 'davis'
+  drug_enc: 'morgan'
+  prot_enc: 'conj_triad'
