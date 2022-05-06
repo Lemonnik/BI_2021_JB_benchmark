@@ -9,21 +9,26 @@ from rdkit import DataStructs
 from pybiomed_helper import CalculateConjointTriad
 from utils import encode_drugs, encode_targets
 
-class LoadDavis(Dataset):
+class LoadDavisOrDB(Dataset):
     '''
-    Load Davis dataset usually used for Drug-Target Interaction (DTI) task.
-    Contains 25,772 DTI pairs, 68 drugs, 379 proteins.
+    Allows to load Davis or BindingDB dataset (not full, only small part), 
+    usually used for Drug-Target Interaction (DTI) task.
+    Davis contains 9,781 DTI pairs, 68 drugs, 379 proteins.
+    BindingDB contains 26,359 DTI pairs, 7165 drugs, 1254 proteins.
 
     Notes
     -----
-    Dataset is downloaded from https://github.com/kexinhuang12345/MolTrans/tree/master/dataset
+    DAVIS and BindingDB are downloaded from 
+    https://github.com/kexinhuang12345/MolTrans/tree/master/dataset
     '''
-    def __init__(self, drug_enc='morgan', prot_enc='conj_triad', mode='train', return_type = 'ind'):
+    def __init__(self, df, drug_enc='morgan', prot_enc='conj_triad', mode='train', return_type = 'ind'):
         '''
         Load dataset.
 
         Parameters
         ----------
+        df : {'davis', 'bindingDB'}
+            What dataset should be loaded
         drug_enc : {'morgan'}
             Drug encoding type.
         prot_enc : {'conj_triad'}
@@ -36,7 +41,10 @@ class LoadDavis(Dataset):
                            or (features, label)                 - used for NFM model
         '''
         # Load dataset
-        dataFolder = 'https://raw.githubusercontent.com/kexinhuang12345/MolTrans/master/dataset/DAVIS/'
+        if df == 'davis':
+            dataFolder = 'https://raw.githubusercontent.com/kexinhuang12345/MolTrans/master/dataset/DAVIS/'
+        elif df == 'bindingDB':
+            dataFolder = 'https://raw.githubusercontent.com/kexinhuang12345/MolTrans/master/dataset/BindingDB/'
         davis_train = pd.read_csv(dataFolder + '/train.csv', index_col=0)
         davis_test = pd.read_csv(dataFolder + '/test.csv', index_col=0)
         davis_val = pd.read_csv(dataFolder + '/val.csv', index_col=0)
@@ -126,51 +134,6 @@ class LoadDavis(Dataset):
         self.dataset['Targ_IND'] = [prot_encoding[i] for i in self.dataset[self.target_col]]
 
         return ind_encoding, reversed_encoding
-
-
-    def _encode_drugs(self):
-        '''
-        Encode all drugs.
-        '''
-        unique_drugs = pd.Series(self.dataset[self.drug_col].unique()).apply(self._smiles2morgan)
-        unique_drugs_dict = dict(zip(self.dataset[self.drug_col].unique(), unique_drugs))
-        self.dataset['drug_encoding'] = [unique_drugs_dict[i] for i in self.dataset[self.drug_col]]
-
-
-    def _encode_targets(self):
-        '''
-        Encode all proteins.
-        '''
-        unique_prot = pd.Series(self.dataset[self.target_col].unique()).apply(self._target2ct)
-        unique_prots_dict = dict(zip(self.dataset[self.target_col].unique(), unique_prot))
-        self.dataset['target_encoding'] = [unique_prots_dict[i] for i in self.dataset[self.target_col]]
-
-
-    def _smiles2morgan(self, s):
-        '''
-        Encode one drug using Morgans Fingerprint.
-        '''
-        try:
-            mol = Chem.MolFromSmiles(s)
-            features_vec = AllChem.GetMorganFingerprintAsBitVect(mol, 2, nBits=1024)
-            features = np.zeros((1,))
-            DataStructs.ConvertToNumpyArray(features_vec, features)
-        except:
-            print(f'Some problems with {s}.. Array of 0\'s will be returned')
-            features = np.zeros((1024, ))
-        return features
-
-
-    def _target2ct(self, s):
-        '''
-        Encode one protein using Conjoint Triad.
-        '''
-        try:
-            features = CalculateConjointTriad(s)
-        except:
-            print(f'Some problems with {s}.. Array of 0\'s will be returned')
-            features = np.zeros((343, ))
-        return features
 
 
     def __len__(self):
