@@ -87,7 +87,7 @@ class NFM(nn.Module):
 
     def forward(self, features, feature_values):
         '''
-        Predicts a relation based on vactor of feature values.
+        Predicts a relation based on vector of feature values.
 
         Parameters
         ----------

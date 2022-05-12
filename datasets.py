@@ -7,7 +7,7 @@ from rdkit import Chem
 from rdkit.Chem import AllChem
 from rdkit import DataStructs
 from pybiomed_helper import CalculateConjointTriad
-from utils import encode_drugs, encode_targets
+from utils import encode_drugs, encode_targets, get_dataset_path
 from sklearn.preprocessing import LabelEncoder
 
 class LoadDavisOrDB(Dataset):
@@ -42,10 +42,8 @@ class LoadDavisOrDB(Dataset):
                            or (features, label)                 - used for NFM model
         '''
         # Load dataset
-        if df == 'davis':
-            dataFolder = 'https://raw.githubusercontent.com/kexinhuang12345/MolTrans/master/dataset/DAVIS/'
-        elif df == 'bindingDB':
-            dataFolder = 'https://raw.githubusercontent.com/kexinhuang12345/MolTrans/master/dataset/BindingDB/'
+        dataFolder = get_dataset_path(df)
+
         dataset_train = pd.read_csv(dataFolder + '/train.csv', index_col=0)
         dataset_test = pd.read_csv(dataFolder + '/test.csv', index_col=0)
         dataset_val = pd.read_csv(dataFolder + '/val.csv', index_col=0)

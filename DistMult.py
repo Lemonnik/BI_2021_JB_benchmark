@@ -17,7 +17,7 @@ class DistMult(nn.Module):
         Parameters
         ----------
         n_nodes : int
-            Number of nodes in knoledge graphs. 
+            Number of nodes in knowledge graphs. 
             In DTI problem - total number of all proteins and drugs.
         n_relations : int
             Number of interactions between proteins and drugs.
@@ -28,7 +28,7 @@ class DistMult(nn.Module):
         self.n_nodes = n_nodes
         self.n_relations = n_relations
         self.embedding_dim = embedding_dim
-        # TODO: add option to work with graphs, where heads and tail are different kind of entities
+        
         self.node_embedding = nn.Embedding(num_embeddings=n_nodes, embedding_dim=embedding_dim)
         torch.nn.init.xavier_uniform_(self.node_embedding.weight)
         self.relation_embedding = nn.Embedding(num_embeddings=n_relations, embedding_dim=embedding_dim)
@@ -47,13 +47,14 @@ class DistMult(nn.Module):
             Tensor containing all tail indicices,
             e.g. encoded drugs/proteins.
         relation_indices : torch.tensor[batch_size]
-            Tensor containing labels 0/1,
-            showing whether relation head -> tail exists.
+            Tensor containing labels,
+            specifying the "head -> tail" relation type.
+            In DTI task there is only one relation type (0/1).
 
         Returns
         -------
         scores : torch.tensor[batch_size]
-            Probabilites-like array showing the "probability" of the existance of relation.
+            Predicted type of relation.
         '''
         head_embeddings = self.node_embedding(head_indices)
         tail_embeddings = self.node_embedding(tail_indices)

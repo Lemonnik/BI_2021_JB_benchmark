@@ -124,4 +124,4 @@ def get_dataset_path(df):
     paths = {'davis': 'https://raw.githubusercontent.com/kexinhuang12345/MolTrans/master/dataset/DAVIS/',
              'bindingDB': 'https://raw.githubusercontent.com/kexinhuang12345/MolTrans/master/dataset/BindingDB/'
     }
-    return path[df]
+    return paths[df]

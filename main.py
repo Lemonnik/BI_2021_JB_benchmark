@@ -1,3 +1,4 @@
+from sklearn.utils import shuffle
 import hydra
 from omegaconf import DictConfig, OmegaConf
 import numpy as np
@@ -12,7 +13,8 @@ from torch.utils.data import DataLoader
 from sklearn.metrics import accuracy_score
 from sklearn.preprocessing import MinMaxScaler
 
-from utils import LoadDavis
+# from utils import LoadDavis
+from datasets import LoadDavisOrDB
 from DistMult import DistMult
 from NFM import NFM
 
@@ -49,9 +51,10 @@ def prepare_embs(model_name, target_indexes, drug_indexes):
 @hydra.main(config_path="config", config_name="config")
 def main(cfg : DictConfig) -> None:
     # Load dataset
-    davis = LoadDavis()
+    if cfg.run_args.dataset in ['davis', 'BindingDB']:
+        dataset = LoadDavisOrDB(df=cfg.run_args.dataset, drug_enc=cfg.run_args.drug_enc, prot_enc=cfg.run_args.prot_enc)
 
-    wandb.init(project="gpt-3")
+    wandb.init(project="DTI-prediction")
 
     # Path to save checkpoints later
     curr_date = time.strftime('%d-%m-%Y')
@@ -63,9 +66,10 @@ def main(cfg : DictConfig) -> None:
     torch.manual_seed(cfg.run_args.seed)
     if cfg.run_args.gpu:
         DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+    print(f'Running models on {DEVICE}.\n')
 
     # Initialize KGE model
-    model = DistMult(davis.n_entities, davis.n_relations, cfg.model.kge.embed_dim)
+    model = DistMult(dataset.n_entities, dataset.n_relations, cfg.model.kge.embed_dim)
     config = wandb.config
     wandb.watch(model)
     # Define Loss-function and Optimizer
@@ -79,8 +83,11 @@ def main(cfg : DictConfig) -> None:
     # TRAINING CYCLE
     print("Starting training DistMult...")
     model.train()
-    davis.return_type = 'ind'
-    loader = DataLoader(davis, batch_size=cfg.model.kge.batch_size, pin_memory=True)
+    dataset.return_type = 'ind'
+    loader = DataLoader(dataset, 
+                        batch_size=cfg.model.kge.batch_size, 
+                        pin_memory=True, 
+                        shuffle=True)
 
     for epoch in range(cfg.model.kge.epoch):
 
@@ -121,12 +128,13 @@ def main(cfg : DictConfig) -> None:
 
     #################################################   NFM   #################################################
     # Get DistMult embeddings and write them in davis dataset
-    embs = prepare_embs(model, davis.dataset.Targ_IND.values, davis.dataset.Drug_IND.values)
-    davis.add_feature('embeddings', embs.tolist())
+    embs = prepare_embs(model, dataset.dataset.ProtIND.values, dataset.dataset.DrugIND.values)
+    dataset.add_feature('embeddings', embs.tolist())
 
-    # total_features = DISTMULT_DIM*2 (heads + tails) + 2124
-    # (2124 = 1023 drug features in Morgan Fingerprint + 101 protein features)
-    total_features = cfg.model.kge.embed_dim * 2 + 2124
+    # total_features = DISTMULT_DIM*2 (heads + tails) + N (drug and protein fetures)
+    dataset.return_type = 'encoding'  # change __getitem__ returns from (drugs, targets, labels) to (features, labels)
+    features, _ = dataset[0]
+    total_features = len(features)
     # Initialize NFM model
     model_nfm = NFM(total_features, cfg.model.nfm.embed_dim, cfg.model.nfm.layers, cfg.model.nfm.batch_norm, cfg.model.nfm.dropout)
 
@@ -140,8 +148,8 @@ def main(cfg : DictConfig) -> None:
     # TRAINING CYCLE
     print("\nStarting training NFM...")
     model_nfm.train()
-    davis.return_type = 'encoding'  # change __getitem__ returns from (drugs, targets, labels) to (features, labels)
-    nfm_loader = DataLoader(davis, batch_size=cfg.model.nfm.batch_size, drop_last=True, pin_memory=True)
+    
+    nfm_loader = DataLoader(dataset, batch_size=cfg.model.nfm.batch_size, drop_last=True, pin_memory=True)
 
     for epoch in range(cfg.model.nfm.epoch):
 
