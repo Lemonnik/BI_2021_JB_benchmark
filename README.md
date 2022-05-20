@@ -1,8 +1,6 @@
 ## Benchmark creation for drug-target interaction (DTI) prediction task
-Author: 
+Authors: 
 - Dmitrii Traktirov
-
-Supervisor:
 - Ellen Kartysheva
 
 
