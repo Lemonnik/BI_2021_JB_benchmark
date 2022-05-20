@@ -61,7 +61,7 @@ You can type ```exit``` to exit the shell.
 
 ### Conclusion and further plans
 
-In nearest feature plans are to:
+In further work we are going to:
 1. Implement cold drug/protein start;
 2. Implement more models and datasets;
 3. Create a GUI
