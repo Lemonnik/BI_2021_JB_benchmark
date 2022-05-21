@@ -32,7 +32,15 @@ Davis Kinase binding affinity dataset contains the interaction of 72 kinase inhi
 Neural Factorization Machine (NFM) combines the linearity of FM in modelling second-order feature interactions and the non-linearity of neural network in modelling higher-order feature interactions.
 **KGE_NFM** model allows to train on of the KGE models and pass its embeddings into NFM model as features (along with drugs and targets features).
 
-
+### Results
+0. Familiarized with the existing papers about DTI and benchmark creation;
+1. Familiarized with a number of frameworks and used a number of frameworks useful for the project:
+    - Poetry for packaging and dependency management;
+    - Wandb to track hyperparameters, system metrics, and predictions;
+    - Hydra to configure application via configuration file or command line;
+2. Selected suitable datasets to perform pipeline – Davis, bindingDB;
+3. Selected several relevant models – KGE models (DistMult, TriModel), KGE+NFM model. Models implemented using PyTorch;
+4. Created a script that allows to train/test selected model on selected dataset and get result metrics.
 
 ### Script usage
 #### Resolving dependencies
