@@ -35,20 +35,21 @@ Neural Factorization Machine (NFM) combines the linearity of FM in modelling sec
 
 
 ### Script usage
+#### Resolving dependencies
 
-This project uses **Poetry** $-$ packaging and dependency management framework. It can be installed with the ```pip install``` command.
+This project uses **Poetry v.1.1** $-$ packaging and dependency management framework. It can be installed with the ```pip install``` command.
 
 ```
 pip install poetry
 ```
 
-All packages and version constraints that are required for this project are listed in *pyproject.toml* file. To install the defined dependencies for your project, just run the ```install``` command.
+All packages and version constraints that are required for this project are listed in *pyproject.toml* file. To install the defined dependencies for the project, just run the ```install``` command.
 
 ```
 poetry install
 ```
 
-Now you can simply **run the script** with the following command:
+Now you can simply **run the script** (with default configuration) with the following command:
 
 ```
 poetry shell python main.py
@@ -56,20 +57,36 @@ poetry shell python main.py
 
 You can type ```exit``` to exit the shell.
 
+#### Hyperparameters and script configuration
+
+This project uses **Hydra** framework, that allows to configure script via configuration file or command line. Configuration parameters are stored at *config/config.yaml* file.
+You can override values in the loaded config from the command line:
+
+```
+poetry shell python main.py cfg.run_args.dataset=BindingDB cfg.model.kge.epoch=25
+```
+
+This will change the dataset used to BindingDB and number of epochs for KGE model to 25.
+
 
 ### Conclusion and further plans
 
 In further work we are going to:
 1. Implement cold drug/protein start;
 2. Implement more models and datasets;
-3. Create a GUI
+3. Reealize more methods to encode drugs and targets into vectors;
+4. Create a GUI
 
 
 ### Literature
-Ye, Q., Hsieh, CY., Yang, Z. et al. A unified drug–target interaction prediction framework based on knowledge graph and recommendation system. Nat Commun 12, 6775 (2021). https://doi.org/10.1038/s41467-021-27137-3
+Dunham, Brandan, and Madhavi K. Ganapathiraju. 2022. "Benchmark Evaluation of Protein–Protein Interaction Prediction Algorithms" Molecules 27, no. 1: 41. https://doi.org/10.3390/molecules27010041 
 
-Yang B. et al.  (2015) Embedding entities and relations for learning and inference in knowledge bases. In: ICLR.
+Kexin Huang, Cao Xiao, Lucas M Glass, Jimeng Sun, MolTrans: Molecular Interaction Transformer for drug–target interaction prediction, Bioinformatics, Volume 37, Issue 6, 15 March 2021, Pages 830–836, https://doi.org/10.1093/bioinformatics/btaa880
 
 Sameh K Mohamed, Vít Nováček, Aayah Nounu, Discovering protein drug targets using knowledge graph embeddings, Bioinformatics, Volume 36, Issue 2, 15 January 2020, Pages 603–610, https://doi.org/10.1093/bioinformatics/btz600
 
-etc. (will be added)
+Xiangnan He and Tat-Seng Chua. 2017. Neural Factorization Machines for Sparse Predictive Analytics. In Proceedings of the 40th International ACM SIGIR Conference on Research and Development in Information Retrieval (SIGIR '17). Association for Computing Machinery, New York, NY, USA, 355–364. https://doi.org/10.1145/3077136.3080777
+
+Yang, Bishan & Yih, Wen-tau & He, Xiaodong & Gao, Jianfeng & Deng, li. (2014). Embedding Entities and Relations for Learning and Inference in Knowledge Bases. 
+
+Ye, Q., Hsieh, CY., Yang, Z. et al. A unified drug–target interaction prediction framework based on knowledge graph and recommendation system. Nat Commun 12, 6775 (2021). https://doi.org/10.1038/s41467-021-27137-3
