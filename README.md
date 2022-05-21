@@ -57,6 +57,10 @@ poetry shell python main.py
 
 You can type ```exit``` to exit the shell.
 
+### Script usage example
+![](running_script_example.jpg)
+
+
 #### Hyperparameters and script configuration
 
 This project uses **Hydra** framework, that allows to configure script via configuration file or command line. Configuration parameters are stored at *config/config.yaml* file.
@@ -70,11 +74,12 @@ This will change the dataset used to BindingDB and number of epochs for KGE mode
 
 
 ### Conclusion and further plans
+The final goal of my work was not to finish the project and create the fully working benchmark on my own. It is the task for a team of developers, and it requires a lot of time. But this work allowed me to learn more about benchmark creation, familiarize myself with datasets and algorithms typically used in DTI task.
 
-In further work we are going to:
-1. Implement cold drug/protein start;
-2. Implement more models and datasets;
-3. Reealize more methods to encode drugs and targets into vectors;
+There are a lot of features we are going to implement in the future and here are just a few of them:
+1. cold drug/protein start;
+2. more models and datasets;
+3. more methods to encode drugs and targets into vectors;
 4. Create a GUI
 
 
