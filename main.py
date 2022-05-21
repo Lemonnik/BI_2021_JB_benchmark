@@ -15,8 +15,8 @@ from sklearn.preprocessing import MinMaxScaler
 
 # from utils import LoadDavis
 from datasets import LoadDavisOrDB
-from DistMult import DistMult
-from NFM import NFM
+from models.KGE_models import DistMult, TriVec
+from models.NFM import NFM
 
 
 def prepare_embs(model_name, target_indexes, drug_indexes):

@@ -1,3 +1,5 @@
+#(!) File is taken from https://github.com/kexinhuang12345/DeepPurpose/blob/master/DeepPurpose/
+
 # this helper script is from PyBioMed to get protein descriptors. 
 # there are incompatibility issues to use the entire library, so I copied and pasted here the src.
 # https://pybiomed.readthedocs.io/en/latest/
