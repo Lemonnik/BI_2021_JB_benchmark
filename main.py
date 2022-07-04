@@ -4,232 +4,152 @@ import numpy as np
 import os
 import pandas as pd
 import time
+import timeit
 from tqdm import trange
-import wandb
+# import wandb
 
 import torch
 from torch.utils.data import DataLoader
-from sklearn.metrics import accuracy_score, roc_auc_score, roc_curve, RocCurveDisplay
+from sklearn.metrics import accuracy_score, roc_auc_score, precision_score, recall_score, roc_auc_score, roc_curve, RocCurveDisplay, auc
 from sklearn.preprocessing import MinMaxScaler
 from sklearn.utils import shuffle
 
-from datasets import LoadDavisOrDB
-from models.KGE_models import DistMult, TriVec
-from models.NFM import NFM as NFM
-from utils import prepare_embs
+from datasets.datasets import Davis
+from preprocess.CPI_prediction_2018_preprocess import CPI_prediction_2018_preprocess
+from models.CPI_prediction_2018_model import CompoundProteinInteractionPrediction
+from models.DistMult import DistMult
 
 
-def run_kge(dataset, model, cfg, model_save_path, DEVICE, with_nfm):
-    '''
-    Train and test KGE model.
-    '''
-    # Define Loss-function and Optimizer
-    loss_fn = torch.nn.MSELoss()
-    optimizer = torch.optim.Adam(model.parameters(), lr=cfg.model.kge.lr)
 
-    # Train on GPU if possible
-    model = model.to(DEVICE)
+class Trainer(object):
+    """
+    Function to train model.
 
-    # DataLoader
-    dataset.return_type = 'ind'
-    loader = DataLoader(dataset, 
-                        batch_size=cfg.model.kge.batch_size, 
-                        pin_memory=True, 
-                        shuffle=True)
+    Parameters
+    ----------
+    model
+        Any model compatible with our DTI benchmark (inherited from BaseModel Class).
+    features_needed : list
 
-    # TRAINING CYCLE
-    print("Starting training DistMult...")
-    train_kge(model, loader, cfg.model.kge.epoch, optimizer, loss_fn, print_every=1)
+    """
+    def __init__(self, model, lr, weight_decay):
+        self.model = model
+        self.optimizer = torch.optim.Adam(self.model.parameters(),
+                                    lr=lr, weight_decay=weight_decay)
 
-    # Save model state
-    kge_path = os.path.join(model_save_path, cfg.model.kge.save_dir)
-    os.makedirs(kge_path, exist_ok=True)
-    torch.save(model.state_dict(), f'{kge_path}/checkpoint.pth')
+    def train(self, dataset, batch_size, device):
+        dataset.return_type = self.model.return_type
+        loader = DataLoader(dataset, batch_size=batch_size)
 
-    if not with_nfm:
-        wandb.finish()
-        # test model
-        print("Starting testing DistMult...")
-        roc_auc = test_kge(model, dataset, optimizer, loss_fn)
-    else:
-        roc_auc = run_nfm(model, cfg, dataset, model_save_path, DEVICE)
+        self.model.train()
 
-    return roc_auc
+        loss_total = 0
 
-def train_kge(model, loader, n_epoch, optimizer, loss_fn, print_every=1):
-    '''
-    Train KGE model.
-    '''
-
-    model.train()
-    for epoch in range(n_epoch):
-
-        running_score = 0
-        n_batches = 0
-        running_loss = 0
-
-        for drugs, targets, labels in loader:  
-            optimizer.zero_grad() 
-
-            score = model(drugs.long(), targets.long(), labels.long())
-            loss = loss_fn(score, labels)
-
-            # Statistics
-            running_loss += loss
-            predictions = np.array([int(j>0.5) for j in torch.sigmoid(score).detach().numpy()])
-            running_score += accuracy_score(labels.numpy(), predictions)
-            n_batches += 1
-
+        for params in loader:  
+            self.optimizer.zero_grad() 
+            params = [p.to(device).long() for p in params]
+            loss = self.model(params)
             loss.backward()
-            optimizer.step()  
+            self.optimizer.step()
 
-        # Print epoch results
-        if epoch % print_every == 0:
-            wandb.log({"loss": running_loss/n_batches})
-            print(f"Epoch {epoch:>3} | Train Loss {running_loss/n_batches:.4f}")
+            loss_total += loss.to('cpu').data.numpy()
+        return loss_total
 
+class Tester(object):
+    """
+    Function to test model.
 
-def test_kge(model, dataset, optimizer, loss_fn):
-    '''
-    Test KGE model.
-    '''
+    Parameters
+    ----------
+    model
+        Any model compatible with our DTI benchmark (inherited from BaseModel Class).
+    features_needed : list
 
-    model.eval()
+    """
+    def __init__(self, model):
+        self.model = model
 
-    loader = DataLoader(dataset, 
-                        batch_size=len(dataset), 
-                        pin_memory=True, 
-                        shuffle=True)
+    def test(self, dataset, batch_size, device):
+        dataset.return_type = self.model.return_type
+        loader = DataLoader(dataset, batch_size=batch_size)
 
-    roc_auc = 0
-    n_batches = len(dataset)/len(dataset)
+        self.model.eval()
 
-    for drugs, targets, labels in loader:  
-        score = model(drugs.long(), targets.long(), labels.long())
-        loss = loss_fn(score, labels)
-
-        # Statistics
-        predictions = np.array([int(j>0.5) for j in torch.sigmoid(score).detach().numpy()])
-        roc_auc += roc_auc_score(labels.numpy(), predictions)
-        # fpr, tpr, thresholds = roc_curve(labels.numpy(), torch.sigmoid(predictions).detach().numpy())
-
-    return roc_auc/n_batches
-
-
-def run_nfm(kge_model, cfg, dataset, model_save_path, DEVICE):
-    '''
-    Train and test NFM.
-    '''
-    # Get DistMult embeddings and write them in the dataset
-    embs = prepare_embs(kge_model, dataset.dataset.ProtIND.values, dataset.dataset.DrugIND.values)
-    dataset.add_feature('embeddings', embs.tolist())
-
-    # total_features = DISTMULT_DIM*2 (heads + tails) + N (drug and protein fetures)
-    dataset.return_type = 'encoding'  # change __getitem__ returns from (drugs, targets, labels) to (features, labels)
-    features, _ = dataset[0]
-    total_features = len(features)
-    # Initialize NFM model
-    model_nfm = NFM(total_features, cfg.model.nfm.embed_dim, cfg.model.nfm.layers, cfg.model.nfm.batch_norm, cfg.model.nfm.dropout)
-    wandb.watch(model_nfm)
-    # Define Loss-function and Optimizer
-    loss_fn_nfm  = torch.nn.MSELoss()
-    optimizer_nfm  = torch.optim.Adam(model_nfm.parameters(), lr=cfg.model.nfm.lr)
-
-    # Train on GPU if possible
-    model_nfm = model_nfm.to(DEVICE)
-    
-    nfm_loader = DataLoader(dataset, batch_size=cfg.model.nfm.batch_size, drop_last=True, pin_memory=True)
-
-    # TRAINING CYCLE
-    print("\nStarting training NFM...")
-    train_nfm(model_nfm, nfm_loader, cfg.model.nfm.epoch, cfg.model.nfm.batch_size, optimizer_nfm, loss_fn_nfm, print_every=1)
-    wandb.finish()
-
-    # Save model state
-    nfm_path = os.path.join(model_save_path, cfg.model.nfm.save_dir)
-    os.makedirs(nfm_path, exist_ok=True)
-    torch.save(model_nfm.state_dict(), f'{nfm_path}/checkpoint.pth')
-
-    print("Starting testing NFM...")
-    roc_auc = test_nfm(model_nfm, dataset, loss_fn_nfm, cfg.model.nfm.batch_size)
-    return roc_auc
+        T, Y, S = [], [], []
+        for params in loader: 
+            params = [p.to(device).long() for p in params]
+            (correct_labels, predicted_labels,
+             predicted_scores) = self.model(params, train=False)
+            T.extend(correct_labels)
+            Y.extend(predicted_labels)
+            S.extend(predicted_scores)
+        AUC = roc_auc_score(T, S)
+        precision = precision_score(T, Y)
+        recall = recall_score(T, Y)
+        return AUC, precision, recall
 
 
-def train_nfm(model, loader, n_epoch, batch_size, optimizer, loss_fn, print_every=1):
-    '''
-    Train NFM model.
-    '''
-    model.train()
+def run_model(model, 
+              dataset_train, 
+              dataset_test,
+              device,
+              batch_size=64, 
+              n_epochs=100, 
+              lr_decay=0.5, 
+              decay_interval=10, 
+              lr=0.7e-3, 
+              weight_decay=1e-6):
 
-    for epoch in range(n_epoch):
+    trainer = Trainer(model, lr, weight_decay)
+    tester = Tester(model)
 
-        running_score = 0
-        n_batches = 0
-        running_loss = 0
+    AUCs = ('Epoch\tTime(sec)\tLoss_train\t'
+                'AUC_test\tPrecision_test\tRecall_test')
 
-        for features, labels in loader:
-            optimizer.zero_grad()
+    """ Start training. """
+    print('Training...')
+    print(AUCs)
+    start = timeit.default_timer()
 
-            features_non_zero = torch.tensor(list(range(features.shape[1])), dtype=torch.int).repeat(batch_size, 1)
-            score = model(features_non_zero.long(), features.long())
+    for epoch in range(1, n_epochs):
 
-            loss = loss_fn(score, labels) 
+        if epoch % decay_interval == 0:
+            trainer.optimizer.param_groups[0]['lr'] *= lr_decay
 
-            # Statistics
-            running_loss += loss
-            predictions = np.array([int(j>0.5) for j in torch.sigmoid(score).detach().numpy()])
-            running_score += accuracy_score(labels.numpy(), predictions)
-            n_batches += 1
+        loss_train = trainer.train(dataset_train, batch_size, device)
+        # AUC_dev = tester.test(dataset_dev)[0]
+        AUC_test, precision_test, recall_test = tester.test(dataset_test, batch_size, device)
 
-            loss.backward()
-            optimizer.step()
+        end = timeit.default_timer()
+        time = end - start
 
-        # Print epoch results
-        if epoch % 1 == 0:
-            wandb.log({"loss": running_loss/n_batches})
-            print(f"Epoch {epoch:>3} | Train Loss {running_loss/n_batches:.4f}")
+        AUCs = [epoch, time, loss_train,
+                AUC_test, precision_test, recall_test]
 
-def test_nfm(model, dataset, loss_fn, batch_size):
-    '''
-    Test NFM model.
-    '''
-    model.eval()
+        if epoch % 10 == 0:
+            print('\t'.join(map(str, AUCs)))
 
-    loader = DataLoader(dataset, 
-                        batch_size=batch_size, 
-                        pin_memory=True, 
-                        shuffle=True, 
-                        drop_last=True)
-
-    roc_auc = 0
-    i=0
-
-    for features, labels in loader:
-        features_non_zero = torch.tensor(list(range(features.shape[1])), dtype=torch.int).repeat(batch_size, 1)
-        score = model(features_non_zero.long(), features.long())
-        loss = loss_fn(score, labels)
-
-        # Statistics
-        predictions = np.array([int(j>0.5) for j in torch.sigmoid(score).detach().numpy()])
-        roc_auc += roc_auc_score(labels.numpy(), predictions)
-        i+=1
-        # fpr, tpr, thresholds = roc_curve(labels.numpy(), torch.sigmoid(predictions).detach().numpy())
-
-    return roc_auc/i
 
 
 @hydra.main(version_base="1.1", config_path="config", config_name="config")
 def main(cfg : DictConfig) -> None:
-    # Load dataset
-    if cfg.run_args.dataset in ['davis', 'BindingDB']:
-        dataset = LoadDavisOrDB(df=cfg.run_args.dataset, drug_enc=cfg.run_args.drug_enc, prot_enc=cfg.run_args.prot_enc)
 
-    wandb.init(project="DTI-prediction")
+    base_path = 'data/'
+
+    """ Load dataset """
+    # TODO: (HERE USER SHOULD CHOOSE DATASET TO LOAD)
+    d_train = Davis(base_path, download=True)
+    d_test = d_train
+    d_test.mode = 'test'
+    # atm. dataset contains all information (train and test)
+    # we can decide what part should be returned by changing ``mode``
+
+    # wandb.init(project="DTI-prediction")
 
     # Path to save checkpoints later
     curr_date = time.strftime('%d-%m-%Y')
     curr_time = time.strftime('%H-%M-%S')
-    model_save_path = f'{curr_date}/{curr_time}'
+    model_save_path = os.path.join(base_path, curr_date, curr_time)
 
     # Define SEED and DEVICE
     torch.manual_seed(cfg.run_args.seed)
@@ -237,18 +157,29 @@ def main(cfg : DictConfig) -> None:
         DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
     print(f'\nRunning models on {DEVICE}.\n')
 
-    # Run model
-    if cfg.run_args.model_to_run == 'DistMult':
-        model = DistMult(dataset.n_entities, dataset.n_relations, cfg.model.kge.embed_dim)
-    elif cfg.run_args.model_to_run == 'TriVec':
-        model = TriVec(dataset.n_entities, dataset.n_relations, cfg.model.kge.embed_dim)
+    """ Preprocessing """   
+    # TODO: (HERE USER SHOULD CHOOSE PREPROCESSING FUNCTION)
+    d_train = CPI_prediction_2018_preprocess(d_train)
+    d_test = d_train
+    d_test.mode = 'test'
+
+
+    """ Run model """   
+    # TODO: (HERE USER SHOULD CHOOSE MODEL)
+    # It is possible to work with two models at the moment
+
+    model = DistMult(n_nodes=d_train.n_entities, 
+                     n_relations=2, 
+                     embedding_dim=cfg.model.kge.embed_dim).to(DEVICE)
+    batch_size_DistMult = 64
+
+    # model = CompoundProteinInteractionPrediction(n_word=len(d_train.word_dict),
+    #                                              n_fingerprint=len(d_train.fingerprint_dict))
+    # batch_size_CPI = 1
+
+    run_model(model, d_train, d_test, DEVICE, batch_size=batch_size_CPI)
     
-    config = wandb.config
-    wandb.watch(model)
-
-    result_metric = run_kge(dataset, model, cfg, model_save_path, DEVICE, with_nfm=cfg.run_args.nfm)
-    print(f'Result metric roc_auc on dataset {cfg.run_args.dataset} = {result_metric}')
-
+    
 
 
 if __name__ == '__main__':

@@ -11,21 +11,70 @@ import torch.optim as optim
 
 from sklearn.metrics import roc_auc_score, precision_score, recall_score
 
+from models.BaseModel import DTI_model
 
-class CompoundProteinInteractionPrediction(nn.Module):
-    def __init__(self):
+
+
+class CompoundProteinInteractionPrediction(DTI_model):
+    """
+    Implementation of CPI_prediction model detailed in 2018 paper by Tsubaki M, et al.
+
+    References
+    ----------
+    * Tsubaki M., Tomii K., Sese J.
+      Compound-protein interaction prediction with 
+      end-to-end learning of neural networks for graphs and sequences.
+      Bioinformatics. 2019; 35(2): 309-318.
+      doi:10.1093/bioinformatics/bty535
+
+    Notes
+    -----
+    All code is taken from authors' orignal github with small changes
+    https://github.com/masashitsubaki/CPI_prediction
+
+    Parameters
+    ----------
+    dim: int
+        Dimension of embedding space.
+    n_filters: int
+        Number of filters used for convolution.
+    n_entities: int
+        Number of entities in the current data set.
+    n_relations: int
+        Number of relations in the current data set.
+
+    """
+
+    def __init__(self, 
+                 n_word: int,
+                 n_fingerprint: int,
+                 dim: int = 10,  
+                 layer_gnn: int = 3, 
+                 layer_cnn: int = 3,  
+                 window: int = 11,
+                 layer_output: int = 3):
         super(CompoundProteinInteractionPrediction, self).__init__()
-        self.embed_fingerprint = nn.Embedding(n_fingerprint, dim)
-        self.embed_word = nn.Embedding(n_word, dim)
-        self.W_gnn = nn.ModuleList([nn.Linear(dim, dim)
-                                    for _ in range(layer_gnn)])
+        self.dim = dim
+        self.n_word = n_word
+        self.n_fingerprint = n_fingerprint
+        self.layer_gnn = layer_gnn
+        self.layer_cnn = layer_cnn  
+        self.window = window
+        self.layer_output = layer_output
+
+        self._return_type = ['compounds', 'adjacencies', 'proteins', 'Label']
+
+        self.embed_fingerprint = nn.Embedding(self.n_fingerprint, self.dim)
+        self.embed_word = nn.Embedding(self.n_word, self.dim)
+        self.W_gnn = nn.ModuleList([nn.Linear(self.dim, self.dim)
+                                    for _ in range(self.layer_gnn)])
         self.W_cnn = nn.ModuleList([nn.Conv2d(
-                     in_channels=1, out_channels=1, kernel_size=2*window+1,
-                     stride=1, padding=window) for _ in range(layer_cnn)])
-        self.W_attention = nn.Linear(dim, dim)
-        self.W_out = nn.ModuleList([nn.Linear(2*dim, 2*dim)
-                                    for _ in range(layer_output)])
-        self.W_interaction = nn.Linear(2*dim, 2)
+                     in_channels=1, out_channels=1, kernel_size=2*self.window+1,
+                     stride=1, padding=self.window) for _ in range(self.layer_cnn)])
+        self.W_attention = nn.Linear(self.dim, self.dim)
+        self.W_out = nn.ModuleList([nn.Linear(2*self.dim, 2*self.dim)
+                                    for _ in range(self.layer_output)])
+        self.W_interaction = nn.Linear(2*self.dim, 2)
 
     def gnn(self, xs, A, layer):
         for i in range(layer):
@@ -48,7 +97,7 @@ class CompoundProteinInteractionPrediction(nn.Module):
         # where WINDOW -- how many embedded words need to be concatenated (section 4.1)
         for i in range(layer):
             xs = torch.relu(self.W_cnn[i](xs))
-        # REMOVE dimensions (??????????????????????????????????????)
+        # REMOVE dimensions
         xs = torch.squeeze(torch.squeeze(xs, 0), 0)
 
         # get scalar values -- weights for neural attention mechamism
@@ -73,7 +122,7 @@ class CompoundProteinInteractionPrediction(nn.Module):
         # First, embed drug fingerprint
         fingerprint_vectors = self.embed_fingerprint(fingerprints)
         # Second, apply GNN (layer_gnn - number of layers) on drug fingerprint 
-        compound_vector = self.gnn(fingerprint_vectors, adjacency, layer_gnn)
+        compound_vector = self.gnn(fingerprint_vectors, adjacency, self.layer_gnn)
 
         """Protein vector with attention-CNN."""
         # words = encoded N-GRAM-plets (e.g. triplets like AAG, TGC, ...)
@@ -81,11 +130,11 @@ class CompoundProteinInteractionPrediction(nn.Module):
         word_vectors = self.embed_word(words)
         # Then we apply CNN
         protein_vector = self.attention_cnn(compound_vector,
-                                            word_vectors, layer_cnn)
+                                            word_vectors, self.layer_cnn)
 
         """Concatenate the above two vectors and output the interaction."""
         cat_vector = torch.cat((compound_vector, protein_vector), 1)
-        for j in range(layer_output):
+        for j in range(self.layer_output):
             cat_vector = torch.relu(self.W_out[j](cat_vector))  # (2*dim, 2*dim)
         interaction = self.W_interaction(cat_vector)  # (2*dim, b_size) --> (2, b_size)
 

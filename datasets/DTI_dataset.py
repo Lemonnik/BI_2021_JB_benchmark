@@ -2,26 +2,46 @@ from torch.utils.data import Dataset
 from abc import ABC, abstractmethod
 import os
 from typing import Any, Callable, Dict, List, Optional, Tuple
+import pickle
+import torch
 
 class DTI_dataset(Dataset, ABC):
     """
-    Base Class For making datasets which are compatible with torchvision.
-    It is necessary to override the ``__getitem__`` and ``__len__`` method.
+    Base Class for making datasets which are compatible with our DTI benchmark.
+    It is necessary to override the ``__getitem__`` and ``__len__`` methods.
 
-    Args:
-        root (string): Root directory of dataset.
-        transforms (callable, optional): A function/transforms that takes in
-            an image and a label and returns the transformed versions of both.
-        transform (callable, optional): A function/transform that  takes in an PIL image
-            and returns a transformed version. E.g, ``transforms.RandomCrop``
-        target_transform (callable, optional): A function/transform that takes in the
-            target and transforms it.
+    Parameters
+    ----------
+    root : str
+        Root directory of dataset.
+    link : str
+        Hyperlink from which dataset can be downloaded.
+    mode : str
+        Which part of data should be loaded in class instance.
+        Possible variants are 'train'/'val'/'test'.
+    download : bool
+        Should the dataset be downloaded using [link] or not.
+    return_type : list[str]
+        Defines what features will be returned by ``__getitem__``.
+        All features must be in ``self.features`` dictionary.
+
+    Attributes
+    ----------
+    filenames : dict
+        Name of files in which different parts (train/validation/test)
+        of dataset will be stored.
+    return_options : list[str]
+        Allows to see ``features.keys()`` -- all possible features,
+        that can be returned by ``__getitem__``.
+    n_entities : int
+        Nubmer of entities in full (train+val+test) dataset.
     """
 
     filenames = {
         'train': 'train.csv', 
         'test': 'test.csv', 
-        'val': 'val.csv'
+        'val': 'val.csv',
+        'full': 'full.csv'
         }
 
     def __init__(
@@ -37,10 +57,9 @@ class DTI_dataset(Dataset, ABC):
             root = os.path.expanduser(root)
         self._n_entities = None
         self.root = root
-        self.mode = mode  # training/validation/test set
-        self.features = {rt:None for rt in return_type}  # container for smiles, sequences, labels and all other features
-        self.return_type = return_type  # what features from self.features Class should return using __getitem__ (see example)
-        self.return_options = self.features.keys()
+        self.mode = mode
+        self.features = {rt:None for rt in return_type}
+        self._return_type = return_type
 
         # if preprocessed data already exist -- we need to load it and that's all
         if self._check_exists(self.processed_folder):
@@ -59,28 +78,25 @@ class DTI_dataset(Dataset, ABC):
         self._load_data()
 
     def _check_exists(self, folder_name) -> bool:
-        """Checks if all files (train/val/test) exist in folder_name"""
-        return all(
-            os.path.exists(os.path.join(folder_name, filename))
-            for filename in self.filenames.values()
-        )
+        """Checks if full.csv file exist in folder_name"""
+        return os.path.exists(os.path.join(folder_name, 'full.csv'))
 
     def add_feature(self, feat_name: str, feat_values: list) -> None:
-        '''
+        """
         Adds new feature.
 
         Parameters
         ----------
         feat_name : str
-            Name of the column.
+            Name of the feature.
         feat_values : list
             Column values.
+        """
         
-        Notes:
-        -----
-        Function created for adding embeddings. Should be replaced by smth more relevant.
-        '''
+        # TODO: add many features with one function call
+
         self.features[feat_name] = feat_values
+        self._save_processed_data()
 
 
     @abstractmethod
@@ -93,6 +109,11 @@ class DTI_dataset(Dataset, ABC):
         """Load processed data (if exist) and store features in self.features dictionary."""
         ...
 
+    @abstractmethod
+    def _save_processed_data(self) -> None:
+        """Save processed data in processed_folder."""
+        ...
+
     
     @property
     def raw_folder(self) -> str:
@@ -103,24 +124,28 @@ class DTI_dataset(Dataset, ABC):
         return os.path.join(self.root, self.__class__.__name__, "processed")
 
     @property
-    def get_drug_names(self) -> List[str]:
-        return self.features['DrugName']
+    def all_drugs(self) -> List[str]:
+        return self._unique_drugs
     
     @property
-    def get_protein_names(self) -> List[str]:
-        return self.features['ProtName']
-    
-    @property
-    def get_labels(self) -> List[int]:
-        return self.features['label']
+    def all_proteins(self) -> List[str]:
+        return self._unique_proteins
     
     @property
     def n_entities(self) -> int:
         return self._n_entities
     
-    @n_entities.setter
-    def n_entities(self, val):
-        self._n_entities = val
+    @property
+    def return_type(self) -> List[str]:
+        return self._return_type
+
+    @return_type.setter
+    def return_type(self, val):
+        self._return_type = val
+
+    @property
+    def return_options(self) -> List[str]:
+        return list(self.features.keys())
 
 
     @abstractmethod
@@ -128,12 +153,17 @@ class DTI_dataset(Dataset, ABC):
         ...
 
     @abstractmethod
-    def __getitem__(self, index: int) -> Any:
+    def __getitem__(self, index: int) -> Tuple:
         """
-        Args:
-            index (int): Index
+        Parameters
+        ----------
+        index : int
+            Index.
 
-        Returns:
-            (Any): Sample and meta data, optionally transformed by the respective transforms.
+        Returns
+        -------
+        Tuple
+            Tuple of features returned. ``return_type`` parameter allows to
+            define what features should be returned.
         """
         ...
