@@ -44,21 +44,18 @@ class DTI_dataset(Dataset, ABC):
         'full': 'full.csv'
         }
 
-    def __init__(
-        self,
-        root: str,
-        link: Optional[str] = None,
-        mode: str = 'train',
-        download: bool = False,
-        return_type: list = ['DrugInd', 'ProtInd', 'Label'],
-        # *,
-        ) -> None:
+    def __init__(self,
+                 root: str,
+                 link: Optional[str] = None,
+                 mode: str = 'train',
+                 download: bool = False,
+                 return_type: list = ['DrugInd', 'ProtInd', 'Label']) -> None:
         if isinstance(root, torch._six.string_classes):
             root = os.path.expanduser(root)
         self._n_entities = None
         self.root = root
         self.mode = mode
-        self.features = {rt:None for rt in return_type}
+        self.features = {rt: None for rt in return_type}
         self._return_type = return_type
 
         # if preprocessed data already exist -- we need to load it and that's all

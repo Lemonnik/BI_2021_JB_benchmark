@@ -16,15 +16,15 @@ logger = logging.getLogger('logger')
 
 class Davis(DTI_dataset):
 
-    download_link = "https://raw.githubusercontent.com/kexinhuang12345/MolTrans/master/dataset/DAVIS/"
+    _download_link = "https://raw.githubusercontent.com/kexinhuang12345/MolTrans/master/dataset/DAVIS/"
 
     def __init__(self, *args, **kwars) -> None:
         self.label_encoder = LabelEncoder()
-        super().__init__(link=self.download_link, *args, **kwars)
+        super().__init__(link=self._download_link, *args, **kwars)
 
     
     def _load_data(self) -> None:
-        logger.debug("Went into _load_data.")
+        logger.debug("Loading data...")
         # Get SMILES and TargetSequences encodings
         self._encode_by_ind()
         # Now load data into self.features
