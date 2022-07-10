@@ -10,6 +10,7 @@ import pickle
 import sys
 
 import numpy as np
+from pandas.core.common import all_none
 
 from rdkit import Chem
 
@@ -124,14 +125,15 @@ def CPI_prediction_2018_preprocess(dataset, radius=2, ngram=3):
     edge_dict = defaultdict(lambda: len(edge_dict))
     word_dict = defaultdict(lambda: len(word_dict))
 
-    compounds, adjacencies, proteins, interactions = [], [], [], []
+    compounds, adjacencies, proteins = {}, {}, {}
     unique_drugs = dataset.all_drugs  # all IDs of unique drugs
     unique_proteins = dataset.all_proteins  # all IDs of unique proteins
 
 
-    for drug_id, protein_id in zip(unique_drugs, unique_proteins):
-        # Iterate over all unique Drugs and Proteins to encode them all
-        smiles, sequence = dataset.ind_to_entity([drug_id, protein_id])
+    """Encode unique drugs and proteins"""
+    for drug_id in unique_drugs:
+        # Iterate over all unique Drugs to encode them all
+        smiles = dataset.ind_to_entity([drug_id])[0]
 
         # Consider hydrogens.
         mol = Chem.AddHs(Chem.MolFromSmiles(smiles))
@@ -147,17 +149,51 @@ def CPI_prediction_2018_preprocess(dataset, radius=2, ngram=3):
 
         # get fingerprint -- np.array() of some integers 
         fingerprints = extract_fingerprints(atoms, i_jbond_dict, radius, fingerprint_dict, edge_dict)
-        compounds.append(fingerprints)
-
+        compounds[drug_id] = fingerprints
 
         # The elements of the matrix indicate whether pairs of vertices are adjacent or not in the graph
         adjacency = create_adjacency(mol)
-        adjacencies.append(adjacency)
+        adjacencies[drug_id] = adjacency
+    
+    for protein_id in unique_proteins:
+        # Iterate over all unique Proteins to encode them all
+        sequence = dataset.ind_to_entity([protein_id])[0]
 
         # Split each Target Sequence into parts of size *ngram* (default=3)
         # and then encode each ngram-plet (e.g. triplets like AAG, TGC, etc) by ID
         words = split_sequence(sequence, ngram, word_dict)
-        proteins.append(words)
+        proteins[protein_id] = words
+
+
+    """Encode all drugs and proteins in dataset to obtain new feature lists"""
+    old_return_type = dataset.return_type
+    dataset.return_type = ['DrugInd', 'ProtInd', 'Label']
+    dataset.mode = 'all'
+
+    all_compounds, all_adjacencies, all_proteins = [], [], []
+
+    for drug_id, protein_id, _ in dataset:
+        drug_id, protein_id = int(drug_id), int(protein_id)
+
+        compound = compounds[drug_id]
+        all_compounds.append(compound)
+
+        adjacency = adjacencies[drug_id]
+        all_adjacencies.append(adjacency)
+
+        words = proteins[protein_id]
+        all_proteins.append(words)
+
+    dataset.return_type = old_return_type
+
+
+    """Add features to dataset."""
+    dataset.add_feature(feat_name="compounds", feat_values=all_compounds)
+    dataset.add_feature(feat_name="adjacencies", feat_values=all_adjacencies)
+    dataset.add_feature(feat_name="proteins", feat_values=all_proteins)
+    dataset.fingerprint_dict = fingerprint_dict
+    dataset.word_dict = word_dict
+
 
     """Save processed data to .pickle files."""
     # dir_input = dataset.processed_folder
@@ -168,12 +204,5 @@ def CPI_prediction_2018_preprocess(dataset, radius=2, ngram=3):
     # dump_dictionary(fingerprint_dict, os.path.join(dir_input, 'fingerprint_dict.pickle'))
     # dump_dictionary(word_dict, os.path.join(dir_input, 'word_dict.pickle'))
 
-    """Now we can add features to dataset."""
-    dataset.add_feature(feat_name="compounds", feat_values=compounds)
-    dataset.add_feature(feat_name="adjacencies", feat_values=adjacencies)
-    dataset.add_feature(feat_name="proteins", feat_values=proteins)
-    dataset.fingerprint_dict = fingerprint_dict
-    dataset.word_dict = word_dict
-
-    """Finally, return result dataset"""
+    """Return result dataset"""
     return dataset

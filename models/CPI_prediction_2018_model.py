@@ -92,6 +92,7 @@ class CompoundProteinInteractionPrediction(DTI_model):
 
         # ADD some dimensions to word-embeddings
         xs = torch.unsqueeze(torch.unsqueeze(xs, 0), 0)
+        # xs = torch.unsqueeze(xs, 0)
         # Some convolution layers + Nonlinearity for word-embeddings
         # kernel_size=2*window+1, padding=window
         # where WINDOW -- how many embedded words need to be concatenated (section 4.1)
@@ -117,6 +118,9 @@ class CompoundProteinInteractionPrediction(DTI_model):
     def forward(self, inputs):
 
         fingerprints, adjacency, words = inputs
+        fingerprints = fingerprints.type(torch.LongTensor)[0]
+        adjacency = adjacency.type(torch.FloatTensor)[0]
+        words = words.type(torch.LongTensor)[0]
 
         """Compound vector with GNN."""
         # First, embed drug fingerprint
