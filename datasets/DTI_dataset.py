@@ -18,7 +18,7 @@ class DTI_dataset(Dataset, ABC):
         Hyperlink from which dataset can be downloaded.
     mode : str
         Which part of data should be loaded in class instance.
-        Possible variants are 'train'/'val'/'test'.
+        Possible variants are 'all'/'train'/'val'/'test'.
     download : bool
         Should the dataset be downloaded using [link] or not.
     return_type : list[str]
