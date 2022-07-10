@@ -153,9 +153,6 @@ def main(cfg : DictConfig) -> None:
 
     # Define SEED and DEVICE
     torch.manual_seed(cfg.run_args.seed)
-    if cfg.run_args.gpu:
-        DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
-    print(f'\nRunning models on {DEVICE}.\n')
 
     """ Preprocessing """   
     # TODO: (HERE USER SHOULD CHOOSE PREPROCESSING FUNCTION)
@@ -163,21 +160,25 @@ def main(cfg : DictConfig) -> None:
     d_test = d_train
     d_test.mode = 'test'
 
+    """ DEVICE """
+    if cfg.run_args.gpu:
+        DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+    print(f'\nRunning models on {DEVICE}.\n')
 
     """ Run model """   
     # TODO: (HERE USER SHOULD CHOOSE MODEL)
     # It is possible to work with two models at the moment
 
-    model = DistMult(n_nodes=d_train.n_entities, 
-                     n_relations=2, 
-                     embedding_dim=cfg.model.kge.embed_dim).to(DEVICE)
-    batch_size_DistMult = 64
+    # model = DistMult(n_nodes=d_train.n_entities, 
+                    #  n_relations=2, 
+                    #  embedding_dim=cfg.model.kge.embed_dim).to(DEVICE)
+    # batch_size_DistMult = 64
 
-    # model = CompoundProteinInteractionPrediction(n_word=len(d_train.word_dict),
-    #                                              n_fingerprint=len(d_train.fingerprint_dict))
-    # batch_size_CPI = 1
+    model = CompoundProteinInteractionPrediction(n_word=len(d_train.word_dict),
+                                                 n_fingerprint=len(d_train.fingerprint_dict)).to(DEVICE)
+    batch_size_CPI = 1
 
-    run_model(model, d_train, d_test, DEVICE, batch_size=batch_size_CPI)
+    run_model(model, d_train, d_test, DEVICE, batch_size=1)
     
     
 

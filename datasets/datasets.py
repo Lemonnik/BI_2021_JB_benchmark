@@ -140,6 +140,18 @@ class Davis(DTI_dataset):
             return len(self.features['Label'][n:])
 
     def __getitem__(self, idx):
+        """
+        Parameters
+        ----------
+        index : int
+            Index.
+
+        Returns
+        -------
+        Tuple
+            Tuple of features returned. ``return_type`` parameter allows to
+            define what features should be returned.
+        """
         feats_to_return = []
 
         ratio = 0.75
@@ -148,6 +160,7 @@ class Davis(DTI_dataset):
             idx = idx + n
 
         for feat in self._return_type:
+            # print(feat, idx, self.features[feat])
             feat_i = self.features[feat][idx]
             try:
                 feat_i = torch.tensor(feat_i, dtype=torch.float32)
