@@ -39,6 +39,7 @@ class Trainer(object):
 
     def train(self, dataset, batch_size, device):
         dataset.return_type = self.model.return_type
+        dataset.mode = 'train'
         loader = DataLoader(dataset, batch_size=batch_size)
 
         self.model.train()
@@ -47,8 +48,8 @@ class Trainer(object):
 
         for params in loader:  
             self.optimizer.zero_grad() 
-            params = [p.to(device).long() for p in params]
-            loss = self.model(params)
+            params = [p.to(device) for p in params]
+            loss = self.model(params, device=device)
             loss.backward()
             self.optimizer.step()
 
@@ -71,15 +72,16 @@ class Tester(object):
 
     def test(self, dataset, batch_size, device):
         dataset.return_type = self.model.return_type
+        dataset.mode = 'test'
         loader = DataLoader(dataset, batch_size=batch_size)
 
         self.model.eval()
 
         T, Y, S = [], [], []
         for params in loader: 
-            params = [p.to(device).long() for p in params]
+            params = [p.to(device) for p in params]
             (correct_labels, predicted_labels,
-             predicted_scores) = self.model(params, train=False)
+             predicted_scores) = self.model(params, train=False, device=device)
             T.extend(correct_labels)
             Y.extend(predicted_labels)
             S.extend(predicted_scores)
@@ -90,8 +92,7 @@ class Tester(object):
 
 
 def run_model(model, 
-              dataset_train, 
-              dataset_test,
+              dataset, 
               device,
               batch_size=64, 
               n_epochs=100, 
@@ -116,9 +117,9 @@ def run_model(model,
         if epoch % decay_interval == 0:
             trainer.optimizer.param_groups[0]['lr'] *= lr_decay
 
-        loss_train = trainer.train(dataset_train, batch_size, device)
+        loss_train = trainer.train(dataset, batch_size, device)
         # AUC_dev = tester.test(dataset_dev)[0]
-        AUC_test, precision_test, recall_test = tester.test(dataset_test, batch_size, device)
+        AUC_test, precision_test, recall_test = tester.test(dataset, batch_size, device)
 
         end = timeit.default_timer()
         time = end - start
@@ -126,7 +127,7 @@ def run_model(model,
         AUCs = [epoch, time, loss_train,
                 AUC_test, precision_test, recall_test]
 
-        if epoch % 10 == 0:
+        if epoch % 1 == 0:
             print('\t'.join(map(str, AUCs)))
 
 
@@ -139,8 +140,6 @@ def main(cfg : DictConfig) -> None:
     """ Load dataset """
     # TODO: (HERE USER SHOULD CHOOSE DATASET TO LOAD)
     d_train = Davis(base_path, download=True)
-    d_test = d_train
-    d_test.mode = 'test'
     # atm. dataset contains all information (train and test)
     # we can decide what part should be returned by changing ``mode``
 
@@ -157,8 +156,6 @@ def main(cfg : DictConfig) -> None:
     """ Preprocessing """   
     # TODO: (HERE USER SHOULD CHOOSE PREPROCESSING FUNCTION)
     d_train = CPI_prediction_2018_preprocess(d_train)
-    d_test = d_train
-    d_test.mode = 'test'
 
     """ DEVICE """
     if cfg.run_args.gpu:
@@ -178,7 +175,7 @@ def main(cfg : DictConfig) -> None:
                                                  n_fingerprint=len(d_train.fingerprint_dict)).to(DEVICE)
     batch_size_CPI = 1
 
-    run_model(model, d_train, d_test, DEVICE, batch_size=1)
+    run_model(model, d_train, DEVICE, batch_size=1)
     
     
 

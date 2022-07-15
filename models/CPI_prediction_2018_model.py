@@ -118,9 +118,6 @@ class CompoundProteinInteractionPrediction(DTI_model):
     def forward(self, inputs):
 
         fingerprints, adjacency, words = inputs
-        fingerprints = fingerprints.type(torch.LongTensor)[0]
-        adjacency = adjacency.type(torch.FloatTensor)[0]
-        words = words.type(torch.LongTensor)[0]
 
         """Compound vector with GNN."""
         # First, embed drug fingerprint
@@ -144,9 +141,18 @@ class CompoundProteinInteractionPrediction(DTI_model):
 
         return interaction
 
-    def __call__(self, data, train=True):
+    def __call__(self, data, train=True, device='cpu'):
 
         inputs, correct_interaction = data[:-1], data[-1]
+        
+        # (6 lines of preprocessing added)
+        fingerprints, adjacency, words = inputs
+        fingerprints =  torch.squeeze(fingerprints, 0).type(torch.LongTensor).to(device)
+        adjacency = torch.squeeze(adjacency, 0).type(torch.FloatTensor).to(device)
+        words = torch.squeeze(words, 0).type(torch.LongTensor).to(device)
+        correct_interaction = correct_interaction.type(torch.LongTensor).to(device)
+        inputs = [fingerprints, adjacency, words]
+
         predicted_interaction = self.forward(inputs)
 
         if train:
