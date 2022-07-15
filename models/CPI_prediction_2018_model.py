@@ -1,18 +1,9 @@
-import pickle
-import sys
-import timeit
-
 import numpy as np
-
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import torch.optim as optim
-
-from sklearn.metrics import roc_auc_score, precision_score, recall_score
 
 from models.BaseModel import DTI_model
-
 
 
 class CompoundProteinInteractionPrediction(DTI_model):
@@ -62,7 +53,7 @@ class CompoundProteinInteractionPrediction(DTI_model):
         self.window = window
         self.layer_output = layer_output
 
-        self._return_type = ['compounds', 'adjacencies', 'proteins', 'Label']
+        self._return_type = ['compounds', 'adjacency', 'proteins', 'Label']
 
         self.embed_fingerprint = nn.Embedding(self.n_fingerprint, self.dim)
         self.embed_word = nn.Embedding(self.n_word, self.dim)

@@ -1,24 +1,19 @@
-import hydra
-from omegaconf import DictConfig, OmegaConf
-import numpy as np
 import os
-import pandas as pd
 import time
 import timeit
-from tqdm import trange
-# import wandb
 
+import hydra
 import torch
+from omegaconf import DictConfig
+from sklearn.metrics import precision_score, recall_score, roc_auc_score
 from torch.utils.data import DataLoader
-from sklearn.metrics import accuracy_score, roc_auc_score, precision_score, recall_score, roc_auc_score, roc_curve, RocCurveDisplay, auc
-from sklearn.preprocessing import MinMaxScaler
-from sklearn.utils import shuffle
 
 from datasets.datasets import Davis
-from preprocess.CPI_prediction_2018_preprocess import CPI_prediction_2018_preprocess
 from models.CPI_prediction_2018_model import CompoundProteinInteractionPrediction
-from models.DistMult import DistMult
+from preprocess.CPI_prediction_2018_preprocess import CPI_prediction_2018_preprocess
 
+
+# import wandb
 
 
 class Trainer(object):
@@ -133,12 +128,11 @@ def run_model(model,
 
 @hydra.main(version_base="1.1", config_path="config", config_name="config")
 def main(cfg : DictConfig) -> None:
-
-    base_path = 'data/'
+    base_path = './data'
 
     """ Load dataset """
     # TODO: (HERE USER SHOULD CHOOSE DATASET TO LOAD)
-    d_train = Davis(base_path, download=True)
+    d_train = Davis(base_path, force_download=True)
     d_test = d_train
     d_test.mode = 'test'
     # atm. dataset contains all information (train and test)
@@ -161,8 +155,7 @@ def main(cfg : DictConfig) -> None:
     d_test.mode = 'test'
 
     """ DEVICE """
-    if cfg.run_args.gpu:
-        DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
+    DEVICE = "cuda" if cfg.run_args.gpu and torch.cuda.is_available() else "cpu"
     print(f'\nRunning models on {DEVICE}.\n')
 
     """ Run model """   
@@ -170,8 +163,8 @@ def main(cfg : DictConfig) -> None:
     # It is possible to work with two models at the moment
 
     # model = DistMult(n_nodes=d_train.n_entities, 
-                    #  n_relations=2, 
-                    #  embedding_dim=cfg.model.kge.embed_dim).to(DEVICE)
+    #  n_relations=2,
+    #  embedding_dim=cfg.model.kge.embed_dim).to(DEVICE)
     # batch_size_DistMult = 64
 
     model = CompoundProteinInteractionPrediction(n_word=len(d_train.word_dict),
@@ -179,8 +172,13 @@ def main(cfg : DictConfig) -> None:
     batch_size_CPI = 1
 
     run_model(model, d_train, d_test, DEVICE, batch_size=1)
-    
-    
+
+
+def main_2():
+    data = Davis(root="./data")
+    data = Davis(root="./data", force_download=True)
+    # data = DtiMinor(root="./data", download=True)
+    print("Finish!")
 
 
 if __name__ == '__main__':

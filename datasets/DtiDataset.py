@@ -1,11 +1,17 @@
-from torch.utils.data import Dataset
-from abc import ABC, abstractmethod
 import os
-from typing import Any, Callable, Dict, List, Optional, Tuple
-import pickle
-import torch
+from abc import ABC, abstractmethod
+from typing import List, Optional, Tuple
 
-class DTI_dataset(Dataset, ABC):
+import torch
+from torch.utils.data import Dataset
+
+
+def check_exists(folder_name, file_name) -> bool:
+    """Checks file with specified name exists in folder_name"""
+    return os.path.exists(os.path.join(folder_name, file_name))
+
+
+class DtiDataset(Dataset, ABC):
     """
     Base Class for making datasets which are compatible with our DTI benchmark.
     It is necessary to override the ``__getitem__`` and ``__len__`` methods.
@@ -14,42 +20,26 @@ class DTI_dataset(Dataset, ABC):
     ----------
     root : str
         Root directory of dataset.
-    link : str
+    download_link : str
         Hyperlink from which dataset can be downloaded.
     mode : str
         Which part of data should be loaded in class instance.
         Possible variants are 'all'/'train'/'val'/'test'.
-    download : bool
+    force_download : bool
         Should the dataset be downloaded using [link] or not.
     return_type : list[str]
         Defines what features will be returned by ``__getitem__``.
         All features must be in ``self.features`` dictionary.
-
-    Attributes
-    ----------
-    filenames : dict
-        Name of files in which different parts (train/validation/test)
-        of dataset will be stored.
-    return_options : list[str]
-        Allows to see ``features.keys()`` -- all possible features,
-        that can be returned by ``__getitem__``.
-    n_entities : int
-        Nubmer of entities in full (train+val+test) dataset.
     """
-
-    filenames = {
-        'train': 'train.csv', 
-        'test': 'test.csv', 
-        'val': 'val.csv',
-        'full': 'full.csv'
-        }
 
     def __init__(self,
                  root: str,
-                 link: Optional[str] = None,
+                 download_link: Optional[str] = None,
                  mode: str = 'train',
-                 download: bool = False,
-                 return_type: list = ['DrugInd', 'ProtInd', 'Label']) -> None:
+                 force_download: bool = False,
+                 return_type=None) -> None:
+        if return_type is None:
+            return_type = ['DrugInd', 'ProtInd', 'Label']
         if isinstance(root, torch._six.string_classes):
             root = os.path.expanduser(root)
         self._n_entities = None
@@ -57,26 +47,23 @@ class DTI_dataset(Dataset, ABC):
         self.mode = mode
         self.features = {rt: None for rt in return_type}
         self._return_type = return_type
+        self.link = download_link
+        self.force_download = force_download
+        self._unique_proteins = None
+        self._unique_drugs = None
 
-        # if preprocessed data already exist -- we need to load it and that's all
-        if self._check_exists(self.processed_folder):
-            self._load_processed_data()
-            return
-
-        # download dataset if needed
-        if download:
-            self.download(link)
-
-        # if raw_folder does not contain all required files (train/val/test) -- raise error
-        if not self._check_exists(self.raw_folder):
-            raise RuntimeError(f"Dataset not found. You should download it or have it stored in {self.raw_folder}")
-
-        # Load data from raw_folder. The required minimum is Drug Names, Protein Names and Labels (interactions)
-        self._load_data()
-
-    def _check_exists(self, folder_name) -> bool:
-        """Checks if full.csv file exist in folder_name"""
-        return os.path.exists(os.path.join(folder_name, 'full.csv'))
+        if force_download:
+            self.download_from_url()
+            self._load_raw_data()
+        else:
+            if os.path.exists(self.raw_folder):
+                try:
+                    self._load_processed_data()
+                    return
+                except (FileNotFoundError, IOError):
+                    # Todo: Create class for loading error
+                    "Processed data not found. Loading from raw data."
+            self._load_raw_data()
 
     def add_feature(self, feat_name: str, feat_values: list) -> None:
         """
@@ -89,15 +76,19 @@ class DTI_dataset(Dataset, ABC):
         feat_values : list
             Column values.
         """
-        
+
         # TODO: add many features with one function call
 
         self.features[feat_name] = feat_values
         self._save_processed_data()
 
+    # Todo: implement
+    def _save_processed_data(self) -> None:
+        """Save processed data in processed_folder."""
+        pass
 
     @abstractmethod
-    def _load_data(self) -> None:
+    def _load_raw_data(self) -> None:
         """Load raw data (if exist) and store features in self.features dictionary."""
         ...
 
@@ -107,11 +98,29 @@ class DTI_dataset(Dataset, ABC):
         ...
 
     @abstractmethod
-    def _save_processed_data(self) -> None:
-        """Save processed data in processed_folder."""
+    def __len__(self) -> int:
         ...
 
-    
+    @abstractmethod
+    def __getitem__(self, index: int) -> Tuple:
+        """
+        Parameters
+        ----------
+        index : int
+            Index.
+
+        Returns
+        -------
+        Tuple
+            Tuple of features returned. ``return_type`` parameter allows
+            defining what features should be returned.
+        """
+        ...
+
+    @abstractmethod
+    def download_from_url(self) -> None:
+        ...
+
     @property
     def raw_folder(self) -> str:
         return os.path.join(self.root, self.__class__.__name__, "raw")
@@ -136,6 +145,7 @@ class DTI_dataset(Dataset, ABC):
     def return_type(self) -> List[str]:
         return self._return_type
 
+    # Todo: Add val checker
     @return_type.setter
     def return_type(self, val):
         self._return_type = val
@@ -143,24 +153,3 @@ class DTI_dataset(Dataset, ABC):
     @property
     def return_options(self) -> List[str]:
         return list(self.features.keys())
-
-
-    @abstractmethod
-    def __len__(self) -> int:
-        ...
-
-    @abstractmethod
-    def __getitem__(self, index: int) -> Tuple:
-        """
-        Parameters
-        ----------
-        index : int
-            Index.
-
-        Returns
-        -------
-        Tuple
-            Tuple of features returned. ``return_type`` parameter allows to
-            define what features should be returned.
-        """
-        ...
