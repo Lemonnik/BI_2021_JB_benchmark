@@ -42,27 +42,33 @@ class DtiDataset(Dataset, ABC):
             return_type = ['DrugInd', 'ProtInd', 'Label']
         if isinstance(root, torch._six.string_classes):
             root = os.path.expanduser(root)
-        self._n_entities = None
         self.root = root
         self.mode = mode
         self.features = {rt: None for rt in return_type}
         self._return_type = return_type
         self.link = download_link
         self.force_download = force_download
-        self._unique_proteins = None
-        self._unique_drugs = None
 
         if force_download:
             self.download_from_url()
             self._load_raw_data()
         else:
+            # TODO change folder to preprocessed folder
             if os.path.exists(self.raw_folder):
                 try:
                     self._load_processed_data()
                     return
                 except (FileNotFoundError, IOError):
+                    # Todo: Create class for loading error and change for log
+                    print("Processed data not found. Loading from raw data.")
+            if os.path.exists(self.raw_folder):
+                try:
+                    self._load_raw_data()
+                    return
+                except (FileNotFoundError, IOError):
                     # Todo: Create class for loading error
-                    "Processed data not found. Loading from raw data."
+                    print("Processed data not found. Loading from raw data.")
+            self.download_from_url()
             self._load_raw_data()
 
     def add_feature(self, feat_name: str, feat_values: list) -> None:
@@ -82,7 +88,7 @@ class DtiDataset(Dataset, ABC):
         self.features[feat_name] = feat_values
         self._save_processed_data()
 
-    # Todo: implement
+    @abstractmethod
     def _save_processed_data(self) -> None:
         """Save processed data in processed_folder."""
         pass
@@ -122,6 +128,21 @@ class DtiDataset(Dataset, ABC):
         ...
 
     @property
+    @abstractmethod
+    def all_drugs(self) -> List[str]:
+        ...
+
+    @property
+    @abstractmethod
+    def all_proteins(self) -> List[str]:
+        ...
+
+    @property
+    @abstractmethod
+    def n_entities(self) -> int:
+        ...
+
+    @property
     def raw_folder(self) -> str:
         return os.path.join(self.root, self.__class__.__name__, "raw")
 
@@ -130,24 +151,17 @@ class DtiDataset(Dataset, ABC):
         return os.path.join(self.root, self.__class__.__name__, "processed")
 
     @property
-    def all_drugs(self) -> List[str]:
-        return self._unique_drugs
-    
-    @property
-    def all_proteins(self) -> List[str]:
-        return self._unique_proteins
-    
-    @property
-    def n_entities(self) -> int:
-        return self._n_entities
-    
-    @property
     def return_type(self) -> List[str]:
         return self._return_type
 
     # Todo: Add val checker
     @return_type.setter
     def return_type(self, val):
+        if type(val) != list:
+            raise ValueError(f"Expected val to be list of str. Got {type(val)}")
+        for prop in val:
+            if prop not in self.features.keys():
+                raise ValueError(f"Expected all return values to be features. {prop} not in features")
         self._return_type = val
 
     @property

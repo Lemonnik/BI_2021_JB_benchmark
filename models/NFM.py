@@ -3,14 +3,14 @@ import torch.nn as nn
 
 
 class NFM(nn.Module):
-    '''
+    """
     Neural Factorization Machine (NFM) model.
 
     See Also
     --------
     X He, TS Chua (2017):
         https://arxiv.org/abs/1708.05027
-    '''
+    """
     def __init__(self, num_features: int, num_factors: int, layers: list, batch_norm: bool, drop_prob: list):
         super(NFM, self).__init__()
         """
@@ -71,9 +71,9 @@ class NFM(nn.Module):
         self._init_weight_()
 
     def _init_weight_(self):
-        '''Initialize weights
-
-        '''
+        """
+        Initialize weights
+        """
         nn.init.normal_(self.embeddings.weight, std=0.01)
         nn.init.constant_(self.biases.weight, 0.0)
 
@@ -86,7 +86,7 @@ class NFM(nn.Module):
             nn.init.constant_(self.prediction.weight, 1.0)
 
     def forward(self, features, feature_values):
-        '''
+        """
         Predicts a relation based on vector of feature values.
 
         Parameters
@@ -101,7 +101,7 @@ class NFM(nn.Module):
         -------
         logits : torch.tensor[batch_size]
             Probabilites-like array showing the "probability" of the existance of relation.
-        '''
+        """
         nonzero_embed = self.embeddings(features)             # shape: (batch_size, n_feats, dimension)
         feature_values = feature_values.unsqueeze(dim=-1)     # shape: (batch_size, n_feats, 1)
         nonzero_embed = nonzero_embed * feature_values        # shape: (batch_size, n_feats, dimension)

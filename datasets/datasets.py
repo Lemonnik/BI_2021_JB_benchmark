@@ -2,6 +2,7 @@ import gzip
 import logging
 import os
 from io import BytesIO
+from typing import List
 from urllib.error import URLError
 
 import pandas as pd
@@ -96,6 +97,18 @@ class Davis(DatasetWithLabelEncoder):
             finally:
                 dataset.to_csv(os.path.join(self.raw_folder, filename))
                 print()
+
+    @property
+    def all_drugs(self) -> List[str]:
+        raise NotImplementedError
+
+    @property
+    def all_proteins(self) -> List[str]:
+        raise NotImplementedError
+
+    @property
+    def n_entities(self) -> int:
+        raise NotImplementedError
 
 
 # TODO: Add encoding of smiles and prot seq from ID

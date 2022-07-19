@@ -1,13 +1,13 @@
-import torch
-from torch import nn
-import torch.nn.functional as F 
-import torch.nn.init
 import numpy as np
+import torch
+import torch.nn.functional as F
+import torch.nn.init
+from torch import nn
 
-from models.BaseModel import DTI_model
+from models.BaseModel import DtiModel
 
 
-class DistMult(DTI_model):
+class DistMult(DtiModel):
     """
     Implementation of Knowledge graph embedding (KGE) model called DistMult
     detailed in 2014 paper by Yang B, et al. 
@@ -33,7 +33,7 @@ class DistMult(DTI_model):
         self.n_nodes = n_nodes
         self.n_relations = n_relations
         self.embedding_dim = embedding_dim
-        
+
         self._return_type = ['DrugInd', 'ProtInd', 'Label']
 
         self.node_embedding = nn.Embedding(num_embeddings=n_nodes, embedding_dim=embedding_dim)
@@ -48,21 +48,22 @@ class DistMult(DTI_model):
         Parameters
         ----------
         head_indices : torch.tensor[batch_size]
-            Tensor containing all head indicices,
+            Tensor containing all head indices,
             e.g. encoded drugs/proteins.
         tail_indices : torch.tensor[batch_size]
-            Tensor containing all tail indicices,
+            Tensor containing all tail indices,
             e.g. encoded drugs/proteins.
         relation_indices : torch.tensor[batch_size]
             Tensor containing labels,
             specifying the "head -> tail" relation type.
-            In DTI task there is only one relation type (0/1).
+            In DTI task, there is only one relation type (0/1).
 
         Returns
         -------
         scores : torch.tensor[batch_size]
             Predicted type of relation.
         """
+
         head_embeddings = self.node_embedding(head_indices)
         tail_embeddings = self.node_embedding(tail_indices)
         relation_embeddings = self.relation_embedding(relation_indices)
@@ -72,7 +73,6 @@ class DistMult(DTI_model):
         return scores
 
     def __call__(self, data, train=True):
-
         head_indices, tail_indices, relation_indices = data
         scores = self.forward(head_indices, tail_indices, relation_indices)
 
@@ -82,7 +82,7 @@ class DistMult(DTI_model):
         else:
             correct_labels = relation_indices.to('cpu').data.numpy()
             # ys = F.softmax(scores, 0).to('cpu').data.numpy()
-            predicted_labels = np.array([int(j>0.5) for j in torch.sigmoid(scores).detach().cpu().numpy()])
+            predicted_labels = np.array([int(j > 0.5) for j in torch.sigmoid(scores).detach().cpu().numpy()])
             predicted_scores = torch.sigmoid(scores).detach().cpu().numpy()
             return correct_labels, predicted_labels, predicted_scores
 
@@ -106,7 +106,7 @@ class DistMult(DTI_model):
             emb_list = self.node_embedding
         elif embedding_type == 'relation':
             emb_list = self.relation_embedding
-
-        
+        else:
+            raise ValueError(f"embedding_type should be 'entity' or 'relation'. Got {embedding_type}")
 
         return emb_list(torch.tensor(entities)).detach().numpy()

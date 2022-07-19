@@ -1,7 +1,7 @@
 import logging
 import os
 import pickle
-from abc import abstractmethod, ABC
+from abc import ABC
 from typing import List, Tuple, Optional
 
 import numpy as np
@@ -29,26 +29,6 @@ class DatasetWithLabelEncoder(DtiDataset, ABC):
         self._label_encoder_path = None
         super().__init__(root, download_link, mode, force_download, return_type)
 
-    @abstractmethod
-    def _load_raw_data(self) -> None:
-        ...
-
-    @abstractmethod
-    def _load_processed_data(self) -> None:
-        ...
-
-    @abstractmethod
-    def _update_processed_data(self) -> None:
-        ...
-
-    @abstractmethod
-    def _save_processed_data(self) -> None:
-        ...
-
-    @abstractmethod
-    def download_from_url(self) -> None:
-        ...
-
     def _encode_by_ind(self, drugs, proteins) -> None:
         """
         Encode drugs and targets by Index
@@ -64,6 +44,16 @@ class DatasetWithLabelEncoder(DtiDataset, ABC):
         self._unique_drugs = self.entity_to_ind(drugs)
         self._unique_proteins = self.entity_to_ind(proteins)
         self._n_entities = len(entities)
+
+    def _load_label_encoder(self):
+        # Todo: add checks and errors
+        if os.path.exists(self._label_encoder_path):
+            logger.debug("Loading existing label encoder...")
+            with open(self._label_encoder_path, 'rb') as le_dump_file:
+                self.label_encoder = pickle.load(le_dump_file)
+            logger.debug("Loaded succesfully.\n")
+            # attribute
+            self._n_entities = len(self.label_encoder.classes_)
 
     def ind_to_entity(self, ind: list) -> List:
         """

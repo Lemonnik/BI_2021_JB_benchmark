@@ -1,10 +1,9 @@
-import torch
+from abc import ABC, abstractmethod
+
 from torch.nn import Module
 
-from abc import ABC, abstractmethod
-import os
 
-class DTI_model(Module, ABC):
+class DtiModel(Module, ABC):
     """
     Base Class for making models which are compatible with our DTI benchmark.
     It is necessary to have ``return_type`` attribute and ``__call__`` method.
@@ -13,11 +12,11 @@ class DTI_model(Module, ABC):
     ----------
     return_type: list
         Defines what features should be returned by ``__getitem__`` method of DTI dataset.
+        Read-only.
     """
 
-
     @property
-    def return_type(self) -> list:
+    def return_type(self):
         return self._return_type
 
     @abstractmethod

@@ -3,10 +3,10 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-from models.BaseModel import DTI_model
+from models.BaseModel import DtiModel
 
 
-class CompoundProteinInteractionPrediction(DTI_model):
+class CompoundProteinInteractionPrediction(DtiModel):
     """
     Implementation of CPI_prediction model detailed in 2018 paper by Tsubaki M, et al.
 
