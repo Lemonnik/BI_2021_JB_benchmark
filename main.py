@@ -20,7 +20,6 @@ from models.CPI_prediction_2018_model import CompoundProteinInteractionPredictio
 from models.DistMult import DistMult
 
 
-
 class Trainer(object):
     """
     Function to train model.
@@ -29,7 +28,6 @@ class Trainer(object):
     ----------
     model
         Any model compatible with our DTI benchmark (inherited from BaseModel Class).
-    features_needed : list
 
     """
     def __init__(self, model, lr, weight_decay):
@@ -56,6 +54,7 @@ class Trainer(object):
             loss_total += loss.to('cpu').data.numpy()
         return loss_total
 
+
 class Tester(object):
     """
     Function to test model.
@@ -64,7 +63,6 @@ class Tester(object):
     ----------
     model
         Any model compatible with our DTI benchmark (inherited from BaseModel Class).
-    features_needed : list
 
     """
     def __init__(self, model):
@@ -85,10 +83,10 @@ class Tester(object):
             T.extend(correct_labels)
             Y.extend(predicted_labels)
             S.extend(predicted_scores)
-        AUC = roc_auc_score(T, S)
+        auc_test = roc_auc_score(T, S)
         precision = precision_score(T, Y)
         recall = recall_score(T, Y)
-        return AUC, precision, recall
+        return auc_test, precision, recall
 
 
 def run_model(model, 
@@ -158,27 +156,27 @@ def main(cfg : DictConfig) -> None:
     d_train = CPI_prediction_2018_preprocess(d_train)
 
     """ DEVICE """
+    device = "cpu"
     if cfg.run_args.gpu:
-        DEVICE = "cuda" if torch.cuda.is_available() else "cpu"
-    print(f'\nRunning models on {DEVICE}.\n')
+        device = "cuda" if torch.cuda.is_available() else "cpu"
+
+    print(f'\nRunning models on {device}.\n')
 
     """ Run model """   
     # TODO: (HERE USER SHOULD CHOOSE MODEL)
     # It is possible to work with two models at the moment
 
-    # model = DistMult(n_nodes=d_train.n_entities, 
-                    #  n_relations=2, 
-                    #  embedding_dim=cfg.model.kge.embed_dim).to(DEVICE)
-    # batch_size_DistMult = 64
+    model = DistMult(n_nodes=d_train.n_entities,
+                     n_relations=2,
+                     embedding_dim=cfg.model.kge.embed_dim).to(device)
+    batch_size = 64
 
-    model = CompoundProteinInteractionPrediction(n_word=len(d_train.word_dict),
-                                                 n_fingerprint=len(d_train.fingerprint_dict)).to(DEVICE)
-    batch_size_CPI = 1
+    # model = CompoundProteinInteractionPrediction(n_word=len(d_train.word_dict),
+    #                                              n_fingerprint=len(d_train.fingerprint_dict)).to(DEVICE)
+    # batch_size_CPI = 1
 
-    run_model(model, d_train, DEVICE, batch_size=1)
+    run_model(model, d_train, device, batch_size=batch_size)
     
-    
-
 
 if __name__ == '__main__':
     main()
