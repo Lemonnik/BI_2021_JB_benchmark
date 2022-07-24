@@ -28,12 +28,11 @@ class Trainer(object):
     ----------
     model
         Any model compatible with our DTI benchmark (inherited from BaseModel Class).
-
     """
     def __init__(self, model, lr, weight_decay):
         self.model = model
         self.optimizer = torch.optim.Adam(self.model.parameters(),
-                                    lr=lr, weight_decay=weight_decay)
+                                          lr=lr, weight_decay=weight_decay)
 
     def train(self, dataset, batch_size, device):
         dataset.return_type = self.model.return_type
@@ -63,7 +62,6 @@ class Tester(object):
     ----------
     model
         Any model compatible with our DTI benchmark (inherited from BaseModel Class).
-
     """
     def __init__(self, model):
         self.model = model
@@ -103,7 +101,7 @@ def run_model(model,
     tester = Tester(model)
 
     AUCs = ('Epoch\tTime(sec)\tLoss_train\t'
-                'AUC_test\tPrecision_test\tRecall_test')
+            'AUC_test\tPrecision_test\tRecall_test')
 
     """ Start training. """
     print('Training...')
@@ -129,9 +127,8 @@ def run_model(model,
             print('\t'.join(map(str, AUCs)))
 
 
-
 @hydra.main(version_base="1.1", config_path="config", config_name="config")
-def main(cfg : DictConfig) -> None:
+def main(cfg: DictConfig) -> None:
 
     base_path = 'data/'
 
@@ -176,7 +173,7 @@ def main(cfg : DictConfig) -> None:
     # batch_size_CPI = 1
 
     run_model(model, d_train, device, batch_size=batch_size)
-    
+
 
 if __name__ == '__main__':
     main()

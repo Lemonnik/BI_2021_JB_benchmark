@@ -48,10 +48,10 @@ class DistMult(DTI_model):
         Parameters
         ----------
         head_indices : torch.tensor[batch_size]
-            Tensor containing all head indicices,
+            Tensor containing all head indices,
             e.g. encoded drugs/proteins.
         tail_indices : torch.tensor[batch_size]
-            Tensor containing all tail indicices,
+            Tensor containing all tail indices,
             e.g. encoded drugs/proteins.
         relation_indices : torch.tensor[batch_size]
             Tensor containing labels,
@@ -108,7 +108,5 @@ class DistMult(DTI_model):
             emb_list = self.node_embedding
         elif embedding_type == 'relation':
             emb_list = self.relation_embedding
-
-        
 
         return emb_list(torch.tensor(entities)).detach().numpy()
