@@ -14,8 +14,7 @@ from sklearn.metrics import roc_auc_score, precision_score, recall_score
 from models.BaseModel import DTI_model
 
 
-
-class CompoundProteinInteractionPrediction(DTI_model):
+class CPI_model(DTI_model):
     """
     Implementation of CPI_prediction model detailed in 2018 paper by Tsubaki M, et al.
 
@@ -48,12 +47,12 @@ class CompoundProteinInteractionPrediction(DTI_model):
     def __init__(self, 
                  n_word: int,
                  n_fingerprint: int,
-                 dim: int = 10,  
-                 layer_gnn: int = 3, 
-                 layer_cnn: int = 3,  
-                 window: int = 11,
-                 layer_output: int = 3):
-        super(CompoundProteinInteractionPrediction, self).__init__()
+                 dim: int,
+                 layer_gnn: int,
+                 layer_cnn: int,
+                 window: int,
+                 layer_output: int):
+        super(CPI_model, self).__init__()
         self.dim = dim
         self.n_word = n_word
         self.n_fingerprint = n_fingerprint
@@ -144,10 +143,10 @@ class CompoundProteinInteractionPrediction(DTI_model):
     def __call__(self, data, train=True, device='cpu'):
 
         inputs, correct_interaction = data[:-1], data[-1]
-        
+
         # (6 lines of preprocessing added)
         fingerprints, adjacency, words = inputs
-        fingerprints =  torch.squeeze(fingerprints, 0).type(torch.LongTensor).to(device)
+        fingerprints = torch.squeeze(fingerprints, 0).type(torch.LongTensor).to(device)
         adjacency = torch.squeeze(adjacency, 0).type(torch.FloatTensor).to(device)
         words = torch.squeeze(words, 0).type(torch.LongTensor).to(device)
         correct_interaction = correct_interaction.type(torch.LongTensor).to(device)

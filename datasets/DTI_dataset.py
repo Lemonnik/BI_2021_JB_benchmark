@@ -5,6 +5,7 @@ from typing import Any, Callable, Dict, List, Optional, Tuple
 import pickle
 import torch
 
+
 class DTI_dataset(Dataset, ABC):
     """
     Base Class for making datasets which are compatible with our DTI benchmark.
@@ -34,7 +35,7 @@ class DTI_dataset(Dataset, ABC):
         Allows to see ``features.keys()`` -- all possible features,
         that can be returned by ``__getitem__``.
     n_entities : int
-        Nubmer of entities in full (train+val+test) dataset.
+        Number of entities in full (train+val+test) dataset.
     """
 
     filenames = {

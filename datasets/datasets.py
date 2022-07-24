@@ -41,7 +41,6 @@ class Davis(DTI_dataset):
 
         logger.debug("LOADED!")
 
-
     def _load_processed_data(self) -> None:
         """Load processed data (if exist) and store features in self.features dictionary."""
         # Not implemented yet
@@ -160,12 +159,11 @@ class Davis(DTI_dataset):
             idx = idx + n
 
         for feat in self._return_type:
-            # print(feat, idx, self.features[feat])
             feat_i = self.features[feat][idx]
-            try:
-                feat_i = torch.tensor(feat_i, dtype=torch.float32)
-            except:
-                pass
+            # try:
+            #     feat_i = torch.tensor(feat_i, dtype=torch.float32)
+            # except:
+            #     pass
             feats_to_return.append(feat_i)
 
         return tuple(feats_to_return)

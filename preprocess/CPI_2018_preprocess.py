@@ -86,7 +86,6 @@ def extract_fingerprints(atoms, i_jbond_dict, radius, fingerprint_dict, edge_dic
 
             # Then, if R > 1, we calculate next-level-neighbors 
 
-
     return np.array(fingerprints)
 
 
@@ -107,7 +106,7 @@ def dump_dictionary(dictionary, filename):
         pickle.dump(dict(dictionary), f)
 
 
-def CPI_prediction_2018_preprocess(dataset, radius=2, ngram=3):
+def cpi_preprocess(dataset, radius=2, ngram=3):
     """
     Takes dataset instance and preprocesses it for CPI_prediction2018 model.
     All new features are written back to dataset using ``add_feature`` method.
@@ -117,7 +116,6 @@ def CPI_prediction_2018_preprocess(dataset, radius=2, ngram=3):
     for feat in ["SMILES", "Sequence", "Label"]:
         if feat not in dataset.return_options:
             print(f"Dataset must contain {feat} feature to properly encode features for CPI_prediction2018 model.")
-
 
     atom_dict = defaultdict(lambda: len(atom_dict))
     bond_dict = defaultdict(lambda: len(bond_dict))
@@ -129,7 +127,6 @@ def CPI_prediction_2018_preprocess(dataset, radius=2, ngram=3):
     unique_drugs = dataset.all_drugs  # all IDs of unique drugs
     unique_proteins = dataset.all_proteins  # all IDs of unique proteins
 
-
     """Encode unique drugs and proteins"""
     for drug_id in unique_drugs:
         # Iterate over all unique Drugs to encode them all
@@ -139,7 +136,7 @@ def CPI_prediction_2018_preprocess(dataset, radius=2, ngram=3):
         mol = Chem.AddHs(Chem.MolFromSmiles(smiles))
         # convert SMILES to np.array of numbers, ex. [0 1 2 1 1 1 3 3]
         # each number corresponds to different atom (encodings stated in atom_dict).
-        # Also aromatic atoms (e.g. C's in cyclohexane) saved in dict as ('C', 'aromatic')...
+        # Also, aromatic atoms (e.g. C's in cyclohexane) saved in dict as ('C', 'aromatic')...
         # ...and because of that ('C') and ('C', 'aromatic') will be encoded by different numbers
         atoms = create_atoms(mol, atom_dict)
 
@@ -160,10 +157,9 @@ def CPI_prediction_2018_preprocess(dataset, radius=2, ngram=3):
         sequence = dataset.ind_to_entity([protein_id])[0]
 
         # Split each Target Sequence into parts of size *ngram* (default=3)
-        # and then encode each ngram-plet (e.g. triplets like AAG, TGC, etc) by ID
+        # and then encode each ngram-plet (e.g. triplets like AAG, TGC, etc.) by ID
         words = split_sequence(sequence, ngram, word_dict)
         proteins[protein_id] = words
-
 
     """Encode all drugs and proteins in dataset to obtain new feature lists"""
     old_return_type = dataset.return_type
@@ -185,7 +181,6 @@ def CPI_prediction_2018_preprocess(dataset, radius=2, ngram=3):
         all_proteins.append(words)
 
     dataset.return_type = old_return_type
-
 
     """Add features to dataset."""
     dataset.add_feature(feat_name="compounds", feat_values=all_compounds)

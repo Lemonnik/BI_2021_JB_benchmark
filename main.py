@@ -1,23 +1,16 @@
 import hydra
-from omegaconf import DictConfig, OmegaConf
-import numpy as np
+from omegaconf import DictConfig
 import os
-import pandas as pd
 import time
 import timeit
-from tqdm import trange
 # import wandb
 
 import torch
 from torch.utils.data import DataLoader
-from sklearn.metrics import accuracy_score, roc_auc_score, precision_score, recall_score, roc_auc_score, roc_curve, RocCurveDisplay, auc
-from sklearn.preprocessing import MinMaxScaler
-from sklearn.utils import shuffle
+from sklearn.metrics import precision_score, recall_score, roc_auc_score
 
 from datasets.datasets import Davis
-from preprocess.CPI_prediction_2018_preprocess import CPI_prediction_2018_preprocess
-from models.CPI_prediction_2018_model import CompoundProteinInteractionPrediction
-from models.DistMult import DistMult
+from model_and_preprocess_selection import select_model, preprocess_dataset
 
 
 class Trainer(object):
@@ -43,9 +36,8 @@ class Trainer(object):
 
         loss_total = 0
 
-        for params in loader:  
-            self.optimizer.zero_grad() 
-            params = [p.to(device) for p in params]
+        for params in loader:
+            self.optimizer.zero_grad()
             loss = self.model(params, device=device)
             loss.backward()
             self.optimizer.step()
@@ -74,8 +66,7 @@ class Tester(object):
         self.model.eval()
 
         T, Y, S = [], [], []
-        for params in loader: 
-            params = [p.to(device) for p in params]
+        for params in loader:
             (correct_labels, predicted_labels,
              predicted_scores) = self.model(params, train=False, device=device)
             T.extend(correct_labels)
@@ -130,11 +121,11 @@ def run_model(model,
 @hydra.main(version_base="1.1", config_path="config", config_name="config")
 def main(cfg: DictConfig) -> None:
 
-    base_path = 'data/'
+    base_path = cfg.base_path
 
     """ Load dataset """
     # TODO: (HERE USER SHOULD CHOOSE DATASET TO LOAD)
-    d_train = Davis(base_path, download=True)
+    dataset = Davis(base_path, download=True)
     # atm. dataset contains all information (train and test)
     # we can decide what part should be returned by changing ``mode``
 
@@ -146,33 +137,29 @@ def main(cfg: DictConfig) -> None:
     model_save_path = os.path.join(base_path, curr_date, curr_time)
 
     # Define SEED and DEVICE
-    torch.manual_seed(cfg.run_args.seed)
+    torch.manual_seed(cfg.seed)
 
-    """ Preprocessing """   
-    # TODO: (HERE USER SHOULD CHOOSE PREPROCESSING FUNCTION)
-    d_train = CPI_prediction_2018_preprocess(d_train)
+    """ Preprocess selection """
+    dataset = preprocess_dataset(cfg.model_name, dataset)
 
-    """ DEVICE """
+    """ Device selection"""
     device = "cpu"
-    if cfg.run_args.gpu:
+    if cfg.gpu:
         device = "cuda" if torch.cuda.is_available() else "cpu"
 
     print(f'\nRunning models on {device}.\n')
 
-    """ Run model """   
-    # TODO: (HERE USER SHOULD CHOOSE MODEL)
-    # It is possible to work with two models at the moment
+    """ Model selection """
+    model = select_model(cfg.model_name, cfg[cfg.model_name], dataset)
+    model = model.to(device)
 
-    model = DistMult(n_nodes=d_train.n_entities,
-                     n_relations=2,
-                     embedding_dim=cfg.model.kge.embed_dim).to(device)
-    batch_size = 64
-
-    # model = CompoundProteinInteractionPrediction(n_word=len(d_train.word_dict),
-    #                                              n_fingerprint=len(d_train.fingerprint_dict)).to(DEVICE)
-    # batch_size_CPI = 1
-
-    run_model(model, d_train, device, batch_size=batch_size)
+    """ Run model """
+    # TODO: choose default batch_size/n_epoch/etc if parameter is not stated in cfg[cfg.model_name]
+    run_model(model=model,
+              dataset=dataset,
+              device=device,
+              batch_size=cfg[cfg.model_name].batch_size,
+              n_epochs=cfg[cfg.model_name].epoch)
 
 
 if __name__ == '__main__':

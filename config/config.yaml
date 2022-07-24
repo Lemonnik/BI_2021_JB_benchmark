@@ -1,27 +1,31 @@
-model:
-  kge:
-    batch_size: 64
-    embed_dim: 100
-    epoch: 10
-    lr: 0.7e-3
-    save_dir: 'models/kge/'
+base_path: 'data/'
+seed: 42
+gpu: True
+dataset: 'davis'
+#drug_enc: 'morgan'
+#prot_enc: 'conj_triad'
+model_name: 'CPI_2018'
 
-  nfm:
-    batch_size: 64
-    embed_dim: 100
-    layers: [256, 128, 64]
-    batch_norm: False
-    dropout: [0.2, 0.2]
-    epoch: 10
-    lr: 0.7e-3
-    save_dir: 'models/nfm/'
+DistMult:
+  embed_dim: 100
+  lr: 0.7e-3
+  batch_size: 64
+  epoch: 10
 
-run_args:
-  seed: 42
-  gpu: True
-  dataset: 'davis'
-  drug_enc: 'morgan'
-  prot_enc: 'conj_triad'
-  model_to_run: 'DistMult'
-  nfm: True
-  model_file: ''
+CPI_2018:
+  dim: 10
+  layer_gnn: 3
+  layer_cnn: 3
+  window: 11
+  layer_output: 3
+  batch_size: 1
+  epoch: 5
+
+nfm:
+  batch_size: 64
+  embed_dim: 100
+  layers: [256, 128, 64]
+  batch_norm: False
+  dropout: [0.2, 0.2]
+  epoch: 10
+  lr: 0.7e-3
