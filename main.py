@@ -30,7 +30,7 @@ class Trainer(object):
     def train(self, dataset, batch_size, device):
         dataset.return_type = self.model.return_type
         dataset.mode = 'train'
-        loader = DataLoader(dataset, batch_size=batch_size)
+        loader = DataLoader(dataset, batch_size=batch_size, drop_last=True)
 
         self.model.train()
 
@@ -61,7 +61,7 @@ class Tester(object):
     def test(self, dataset, batch_size, device):
         dataset.return_type = self.model.return_type
         dataset.mode = 'test'
-        loader = DataLoader(dataset, batch_size=batch_size)
+        loader = DataLoader(dataset, batch_size=batch_size, drop_last=True)
 
         self.model.eval()
 
@@ -95,7 +95,7 @@ def run_model(model,
             'AUC_test\tPrecision_test\tRecall_test')
 
     """ Start training. """
-    print('Training...')
+    print(print('--- Training ---'))
     print(AUCs)
     start = timeit.default_timer()
 
@@ -140,18 +140,23 @@ def main(cfg: DictConfig) -> None:
     torch.manual_seed(cfg.seed)
 
     """ Preprocess selection """
-    dataset = preprocess_dataset(cfg.model_name, dataset)
+    print('--- Data Preparation ---')
+    dataset = preprocess_dataset(cfg.model_name, cfg[cfg.model_name].preprocess_params, dataset)
+    print('--- Finished ---\n')
 
     """ Device selection"""
+    print('--- Device Preparation ---')
     device = "cpu"
     if cfg.gpu:
         device = "cuda" if torch.cuda.is_available() else "cpu"
 
-    print(f'\nRunning models on {device}.\n')
+    print(f'Running models on {device}.\n')
 
     """ Model selection """
-    model = select_model(cfg.model_name, cfg[cfg.model_name], dataset)
+    print('--- Model Preparation ---')
+    model = select_model(cfg.model_name, cfg[cfg.model_name].model_params, dataset)
     model = model.to(device)
+    print(f'--- Using model {type(model).__name__} ---\n')
 
     """ Run model """
     # TODO: choose default batch_size/n_epoch/etc if parameter is not stated in cfg[cfg.model_name]
