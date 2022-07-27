@@ -74,6 +74,9 @@ class DistMult(DtiModel):
 
     def __call__(self, data, train=True):
         head_indices, tail_indices, relation_indices = data
+        head_indices = head_indices.type(torch.LongTensor).to(device)
+        tail_indices = tail_indices.type(torch.LongTensor).to(device)
+        relation_indices = relation_indices.type(torch.LongTensor).to(device)
         scores = self.forward(head_indices, tail_indices, relation_indices)
 
         if train:

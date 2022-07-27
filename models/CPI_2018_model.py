@@ -1,7 +1,15 @@
+import pickle
+import sys
+import timeit
+
 import numpy as np
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
+import torch.optim as optim
+
+from sklearn.metrics import roc_auc_score, precision_score, recall_score
 
 from models.BaseModel import DtiModel
 
@@ -39,11 +47,11 @@ class CompoundProteinInteractionPrediction(DtiModel):
     def __init__(self, 
                  n_word: int,
                  n_fingerprint: int,
-                 dim: int = 10,  
-                 layer_gnn: int = 3, 
-                 layer_cnn: int = 3,  
-                 window: int = 11,
-                 layer_output: int = 3):
+                 dim: int,
+                 layer_gnn: int,
+                 layer_cnn: int,
+                 window: int,
+                 layer_output: int):
         super(CompoundProteinInteractionPrediction, self).__init__()
         self.dim = dim
         self.n_word = n_word
@@ -53,7 +61,7 @@ class CompoundProteinInteractionPrediction(DtiModel):
         self.window = window
         self.layer_output = layer_output
 
-        self._return_type = ['compounds', 'adjacency', 'proteins', 'Label']
+        self._return_type = ['compounds', 'adjacencies', 'proteins', 'Label']
 
         self.embed_fingerprint = nn.Embedding(self.n_fingerprint, self.dim)
         self.embed_word = nn.Embedding(self.n_word, self.dim)
@@ -109,9 +117,6 @@ class CompoundProteinInteractionPrediction(DtiModel):
     def forward(self, inputs):
 
         fingerprints, adjacency, words = inputs
-        fingerprints = fingerprints.type(torch.LongTensor)[0]
-        adjacency = adjacency.type(torch.FloatTensor)[0]
-        words = words.type(torch.LongTensor)[0]
 
         """Compound vector with GNN."""
         # First, embed drug fingerprint
@@ -135,9 +140,18 @@ class CompoundProteinInteractionPrediction(DtiModel):
 
         return interaction
 
-    def __call__(self, data, train=True):
+    def __call__(self, data, train=True, device='cpu'):
 
         inputs, correct_interaction = data[:-1], data[-1]
+
+        # (6 lines of preprocessing added)
+        fingerprints, adjacency, words = inputs
+        fingerprints = torch.squeeze(fingerprints, 0).type(torch.LongTensor).to(device)
+        adjacency = torch.squeeze(adjacency, 0).type(torch.FloatTensor).to(device)
+        words = torch.squeeze(words, 0).type(torch.LongTensor).to(device)
+        correct_interaction = correct_interaction.type(torch.LongTensor).to(device)
+        inputs = [fingerprints, adjacency, words]
+
         predicted_interaction = self.forward(inputs)
 
         if train:

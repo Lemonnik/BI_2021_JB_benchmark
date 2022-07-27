@@ -114,7 +114,6 @@ def CPI_prediction_2018_preprocess(dataset, radius=2, ngram=3):
         if feat not in dataset.return_options:
             print(f"Dataset must contain {feat} feature to properly encode features for CPI_prediction2018 model.")
 
-
     atom_dict = defaultdict(lambda: len(atom_dict))
     bond_dict = defaultdict(lambda: len(bond_dict))
     fingerprint_dict = defaultdict(lambda: len(fingerprint_dict))
@@ -124,7 +123,6 @@ def CPI_prediction_2018_preprocess(dataset, radius=2, ngram=3):
     compounds, adjacency_list, proteins = {}, {}, {}
     unique_drugs = dataset.all_drugs  # all IDs of unique drugs
     unique_proteins = dataset.all_proteins  # all IDs of unique proteins
-
 
     """Encode unique drugs and proteins"""
     for drug_id in unique_drugs:
@@ -156,7 +154,7 @@ def CPI_prediction_2018_preprocess(dataset, radius=2, ngram=3):
         sequence = dataset.ind_to_entity([protein_id])[0]
 
         # Split each Target Sequence into parts of size *ngram* (default=3)
-        # and then encode each ngram-plet (e.g. triplets like AAG, TGC, etc) by ID
+        # and then encode each ngram-plet (e.g. triplets like AAG, TGC, etc.) by ID
         words = split_sequence(sequence, ngram, word_dict)
         proteins[protein_id] = words
 
@@ -179,12 +177,11 @@ def CPI_prediction_2018_preprocess(dataset, radius=2, ngram=3):
         words = proteins[protein_id]
         all_proteins.append(words)
 
-    # dataset.return_type = old_return_type
-
+    dataset.return_type = old_return_type
 
     """Add features to dataset."""
     dataset.add_feature(feat_name="compounds", feat_values=all_compounds)
-    dataset.add_feature(feat_name="adjacency", feat_values=all_adjacency)
+    dataset.add_feature(feat_name="adjacencies", feat_values=all_adjacency)
     dataset.add_feature(feat_name="proteins", feat_values=all_proteins)
     dataset.fingerprint_dict = fingerprint_dict
     dataset.word_dict = word_dict
