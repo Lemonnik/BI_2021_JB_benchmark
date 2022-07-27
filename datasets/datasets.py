@@ -1,38 +1,53 @@
-from urllib.error import URLError
-from sklearn.preprocessing import LabelEncoder
-import pickle
-import os
+import gzip
 import logging
-import pandas as pd
-import numpy as np
-from typing import Any, Callable, Dict, List, Optional, Tuple
-from datasets.DTI_dataset import DTI_dataset
-import torch
+import os
+from io import BytesIO
+from typing import List
+from urllib.error import URLError
 
+import pandas as pd
+import requests
+from sklearn.preprocessing import LabelEncoder
+
+from datasets.datasetWithLabelEncoder import DatasetWithLabelEncoder
 
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger('logger')
 
 
-class Davis(DTI_dataset):
-
+class Davis(DatasetWithLabelEncoder):
     _download_link = "https://raw.githubusercontent.com/kexinhuang12345/MolTrans/master/dataset/DAVIS/"
+    _label_encoder_filename = "label_encoder.pkl"
+    filenames = {
+        'train': 'train.csv',
+        'test': 'test.csv',
+        'val': 'val.csv',
+        'full': 'full.csv'
+    }
 
-    def __init__(self, *args, **kwars) -> None:
+    def __init__(self,
+                 root: str,
+                 mode: str = 'train',
+                 force_download: bool = False,
+                 return_type=None) -> None:
+        if return_type is None:
+            return_type = ['DrugInd', 'ProtInd', 'Label']
         self.label_encoder = LabelEncoder()
-        super().__init__(link=self._download_link, *args, **kwars)
+        self._label_encoder_path = None
+        super().__init__(root, self._download_link, mode, force_download, return_type)
 
-    
-    def _load_data(self) -> None:
+    def _load_raw_data(self) -> None:
         logger.debug("Loading data...")
-        # Get SMILES and TargetSequences encodings
-        self._encode_by_ind()
-        # Now load data into self.features
-        df = pd.read_csv(os.path.join(self.raw_folder, self.filenames['full']), index_col=0)
 
-        self.add_feature(feat_name="SMILES", feat_values=df["SMILES"].values.tolist())
-        self.add_feature(feat_name="Sequence", feat_values=df["Target Sequence"].values.tolist())
-        self.add_feature(feat_name="Label", feat_values=df["Label"].values.tolist())
+        dataset = pd.read_csv(os.path.join(self.raw_folder, self.filenames['full']))
+        drugs = dataset["SMILES"].unique()
+        prots = dataset["Target Sequence"].unique()
+
+        self._encode_by_ind(drugs, prots)
+
+        self.add_feature(feat_name="SMILES", feat_values=dataset["SMILES"].values.tolist())
+        self.add_feature(feat_name="Sequence", feat_values=dataset["Target Sequence"].values.tolist())
+        self.add_feature(feat_name="Label", feat_values=dataset["Label"].values.tolist())
 
         self.add_feature(feat_name="DrugName", feat_values=self.entity_to_ind(self.features["SMILES"]))
         self.add_feature(feat_name="DrugInd", feat_values=self.entity_to_ind(self.features["SMILES"]))
@@ -42,101 +57,114 @@ class Davis(DTI_dataset):
         logger.debug("LOADED!")
 
     def _load_processed_data(self) -> None:
-        """Load processed data (if exist) and store features in self.features dictionary."""
-        # Not implemented yet
+        # """Load processed data (if exist) and store features in self.features dictionary."""
+        # if os.path.exists(self._label_encoder_path) or self.download_from_url:
+        #     logger.debug("Loading existing label encoder...")
+        #     with open(self._label_encoder_path, 'rb') as le_dump_file:
+        #         self.label_encoder = pickle.load(le_dump_file)
+        #     logger.debug("Loaded successfully.\n")
+        #     # attribute
+        #     self._n_entities = len(self.label_encoder.classes_)
+        # else:
+        #     self._encode_by_ind(entities=)
+        raise NotImplementedError()
     
     def _update_processed_data(self) -> None:
         """Update processed data (rewrite files train/val/test.csv"""
-        # Not implemented yet
+        raise NotImplementedError()
 
     def _save_processed_data(self) -> None:
         """Save processed data in processed_folder (rewrite files train/val/test.csv)."""
-        pass
         # with open(os.path.join(self.processed_folder, ), "") as :
+        pass
 
-    def download(self, link: str) -> None:
+    def download_from_url(self) -> None:
         """Download the data if it doesn't exist already."""
-
-        if self._check_exists(self.raw_folder):
-            logger.debug("Raw dataset already downloaded.")
-            return
-        
         os.makedirs(self.raw_folder, exist_ok=True)
 
         # download and save all raw datasets (train/val/test)
         dataset = pd.DataFrame()
         for filename in self.filenames.values():
-            url = f"{link}{filename}"
+            url = f"{self._download_link}{filename}"
             try:
                 print(f"Downloading {url}")
                 df = pd.read_csv(url, index_col=0)
-                dataset = dataset.append(df[["SMILES","Target Sequence", "Label"]], ignore_index=True).drop_duplicates(ignore_index=True)
+                dataset = dataset.append(df[["SMILES", "Target Sequence", "Label"]], ignore_index=True).drop_duplicates(
+                    ignore_index=True)
             except URLError as error:
                 print(f"Failed to download {filename}:\n{error}")
                 continue
             finally:
-                dataset.to_csv(os.path.join(self.raw_folder, self.filenames['full']))
+                dataset.to_csv(os.path.join(self.raw_folder, filename))
                 print()
 
-    def _encode_by_ind(self) -> None:
-        """
-        Encode drugs and targets by Index
-        """
-        # If LabelEncoder already exists -- load encodings
-        label_encoder_path = os.path.join(self.raw_folder, "label_encoder.pkl")
-        if os.path.exists(label_encoder_path):
-            logger.debug("Loading existing label encoder...")
-            with open(label_encoder_path, 'rb') as le_dump_file:
-                self.label_encoder = pickle.load(le_dump_file)
-            logger.debug("Loaded succesfully.\n")
-            #attribute
-            self._n_entities = len(self.label_encoder.classes_)
-            return
+    @property
+    def all_drugs(self) -> List[str]:
+        raise NotImplementedError
 
-        # If not:
-        # load raw file with full dataset and encode all unique drugs/prots by some IND
-        dataset = pd.read_csv(os.path.join(self.raw_folder, self.filenames['full']))
+    @property
+    def all_proteins(self) -> List[str]:
+        raise NotImplementedError
+
+    @property
+    def n_entities(self) -> int:
+        raise NotImplementedError
+
+
+# TODO: Add encoding of smiles and prot seq from ID
+class DtiMinor(DatasetWithLabelEncoder):
+    _download_link = 'http://snap.stanford.edu/biodata/datasets/10002/files/ChG-Miner_miner-chem-gene.tsv.gz'
+    _downloaded_file_name = "DTIMinor.tsv"
+    _label_encoder_filename = "label_encoder.pkl"
+
+    def __init__(self,
+                 root: str,
+                 mode: str = 'train',
+                 force_download: bool = False,
+                 return_type=None) -> None:
+        if return_type is None:
+            return_type = ['DrugInd', 'ProtInd', 'Label']
+        self.label_encoder = LabelEncoder()
+        self._label_encoder_path = None
+
+        super().__init__(root, self._download_link, mode, force_download, return_type)
+
+    def download_from_url(self):
+        """
+        Download data if it's not presented on a device.
+        """
+
+        save_path = os.path.join(self.raw_folder, self._downloaded_file_name)
+
+        if self.download_from_url:
+            if not os.path.exists(self.raw_folder):
+                os.makedirs(self.raw_folder, exist_ok=True)
+
+            # download file
+            resp = requests.get(self._download_link, allow_redirects=True)
+            gzipfl = gzip.GzipFile(fileobj=BytesIO(resp.content))
+
+            with open(save_path, 'w') as file:
+                for row in gzipfl.readlines():
+                    file.write(row.decode())
+
+    def _load_raw_data(self) -> None:
+        logger.debug("Loading data...")
+
+        dataset = pd.read_csv(os.path.join(self.raw_folder, self._downloaded_file_name))
         drugs = dataset["SMILES"].unique()
         prots = dataset["Target Sequence"].unique()
-        entities = np.append(drugs, prots)           # all unique drugs and proteins
-        
-        # save encodings 
-        self.label_encoder.fit(entities)
-        with open(label_encoder_path, "wb") as le_dump_file:
-            pickle.dump(self.label_encoder, le_dump_file)
-        logger.debug("Drugs and Proteins were encoded by IND's...")
-        # ...now we have encodings stored in label_encoder.pkl and in self.label_encoder
 
-        # attributes
-        # TODO: move _unique_proteins/_unique_drugs setting into ``download()`` function 
-        self._unique_drugs = self.entity_to_ind(drugs)
-        self._unique_proteins = self.entity_to_ind(prots)
-        self._n_entities = len(entities)
+        self._encode_by_ind(drugs, prots)
 
-    def ind_to_entity(self, ind: list) -> List:
-        """
-        Gets list of drugs/proteins IND's.
-        Returns SMILES strings/Target Sequences.
-        """
-        # return [self.label_encoder.classes_[i] for i in ind]
-        return self.label_encoder.inverse_transform(ind).tolist()
+    def _load_processed_data(self) -> None:
+        raise NotImplementedError()
 
-    def entity_to_ind(self, s: list) -> List:
-        """
-        Gets list of SMILES strings/Target Sequences.
-        Returns their indexes (IND's).
-        """
-        return self.label_encoder.transform(s).tolist()
+    def _save_processed_data(self) -> None:
+        raise NotImplementedError()
 
-    def __len__(self) -> int:
-        # return len(self.features['Label'])
-        # TODO: Normal train/test/val split
-        ratio = 0.75
-        n = int(ratio * len(self.features['Label']))
-        if self.mode == 'train':
-            return len(self.features['Label'][:n])
-        else:
-            return len(self.features['Label'][n:])
+    def _update_processed_data(self) -> None:
+        raise NotImplementedError()
 
     def __getitem__(self, idx):
         """

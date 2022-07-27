@@ -11,10 +11,10 @@ import torch.optim as optim
 
 from sklearn.metrics import roc_auc_score, precision_score, recall_score
 
-from models.BaseModel import DTI_model
+from models.BaseModel import DtiModel
 
 
-class CPI_model(DTI_model):
+class CompoundProteinInteractionPrediction(DtiModel):
     """
     Implementation of CPI_prediction model detailed in 2018 paper by Tsubaki M, et al.
 
@@ -52,7 +52,7 @@ class CPI_model(DTI_model):
                  layer_cnn: int,
                  window: int,
                  layer_output: int):
-        super(CPI_model, self).__init__()
+        super(CompoundProteinInteractionPrediction, self).__init__()
         self.dim = dim
         self.n_word = n_word
         self.n_fingerprint = n_fingerprint
