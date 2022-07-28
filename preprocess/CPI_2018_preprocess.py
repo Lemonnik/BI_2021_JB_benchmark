@@ -121,13 +121,21 @@ def cpi_preprocess(dataset, radius=2, ngram=3):
     word_dict = defaultdict(lambda: len(word_dict))
 
     compounds, adjacency_list, proteins = {}, {}, {}
-    unique_drugs = dataset.all_drugs  # all IDs of unique drugs
-    unique_proteins = dataset.all_proteins  # all IDs of unique proteins
+
+    old_return_type = dataset.return_type
+    dataset.return_type = ['SMILES', 'Sequence', 'Label']
+    dataset.mode = 'all'
+
+    # TODO: Is it OK that I use dataset.features dictionary
+    # TODO: or is it better to implement dataset.all_drugs and dataset.all_proteins?
+    # unique_drugs = dataset.all_drugs  # all IDs of unique drugs
+    unique_drugs = list(set(dataset.features["SMILES"]))  # all unique drug SMILES
+    # unique_proteins = dataset.all_proteins  # all IDs of unique proteins
+    unique_proteins = list(set(dataset.features["Sequence"]))  # all unique protein sequences
 
     """Encode unique drugs and proteins"""
-    for drug_id in unique_drugs:
+    for smiles in unique_drugs:
         # Iterate over all unique Drugs to encode them all
-        smiles = dataset.ind_to_entity([drug_id])[0]
 
         # Consider hydrogen.
         mol = Chem.AddHs(Chem.MolFromSmiles(smiles))
@@ -143,38 +151,32 @@ def cpi_preprocess(dataset, radius=2, ngram=3):
 
         # get fingerprint -- np.array() of some integers 
         fingerprints = extract_fingerprints(atoms, i_j_bond_dict, radius, fingerprint_dict, edge_dict)
-        compounds[drug_id] = fingerprints
+        compounds[smiles] = fingerprints
 
         # The elements of the matrix indicate whether pairs of vertices are adjacent or not in the graph
         adjacency = create_adjacency(mol)
-        adjacency_list[drug_id] = adjacency
+        adjacency_list[smiles] = adjacency
 
-    for protein_id in unique_proteins:
+    for sequence in unique_proteins:
         # Iterate over all unique proteins to encode them all
-        sequence = dataset.ind_to_entity([protein_id])[0]
 
         # Split each Target Sequence into parts of size *ngram* (default=3)
         # and then encode each ngram-plet (e.g. triplets like AAG, TGC, etc.) by ID
         words = split_sequence(sequence, ngram, word_dict)
-        proteins[protein_id] = words
+        proteins[sequence] = words
 
     """Encode all drugs and proteins in dataset to obtain new feature lists"""
-    old_return_type = dataset.return_type
-    dataset.return_type = ['DrugInd', 'ProtInd', 'Label']
-    dataset.mode = 'all'
 
     all_compounds, all_adjacency, all_proteins = [], [], []
 
-    for drug_id, protein_id, _ in dataset:
-        drug_id, protein_id = int(drug_id), int(protein_id)
-
-        compound = compounds[drug_id]
+    for smiles, sequence, _ in dataset:
+        compound = compounds[smiles]
         all_compounds.append(compound)
 
-        adjacency = adjacency_list[drug_id]
+        adjacency = adjacency_list[smiles]
         all_adjacency.append(adjacency)
 
-        words = proteins[protein_id]
+        words = proteins[sequence]
         all_proteins.append(words)
 
     dataset.return_type = old_return_type
