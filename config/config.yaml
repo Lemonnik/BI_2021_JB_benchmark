@@ -1,27 +1,68 @@
-model:
-  kge:
-    batch_size: 64
-    embed_dim: 100
-    epoch: 10
-    lr: 0.7e-3
-    save_dir: 'models/kge/'
+base_path: 'data/'
+seed: 42
+gpu: True
+dataset: 'davis'
+#drug_enc: 'morgan'
+#prot_enc: 'conj_triad'
+model_name: 'DistMult'
 
-  nfm:
-    batch_size: 64
+DistMult:
+  model_params:
     embed_dim: 100
-    layers: [256, 128, 64]
+  preprocess_params:
+    None
+  lr: 0.7e-3
+  batch_size: 64
+  epoch: 10
+
+CPI_2018:
+  model_params:
+    dim: 10
+    layer_gnn: 3
+    layer_cnn: 3
+    window: 11
+    layer_output: 3
+  preprocess_params:
+    radius: 2
+    ngram: 3
+  batch_size: 1
+  epoch: 5
+
+MolTrans_2020:
+  model_params:
+    max_drug_seq: 50
+    max_protein_seq: 545
+    input_dim_drug: 23532
+    input_dim_target: 16693
+    emb_size: 384
+    dropout_rate: 0.1
+    batch_size: 16
+    #DenseNet
+    scale_down_ratio: 0.25
+    growth_rate: 20
+    transition_rate: 0.5
+    num_dense_blocks: 4
+    kernal_dense_size: 3
+    # Encoder
+    intermediate_size: 1536
+    num_attention_heads: 12
+    attention_probs_dropout_prob: 0.1
+    hidden_dropout_prob: 0.1
+    flat_dim: 78192
+  preprocess_params:
+    max_drug_seq: 50
+    max_protein_seq: 545
+  batch_size: 16
+  epoch: 13
+
+nfm:
+  batch_size: 64
+  epoch: 10
+  lr: 0.7e-3
+  model_params:
+    embed_dim: 100
+    layers: [ 256, 128, 64 ]
     batch_norm: False
-    dropout: [0.2, 0.2]
-    epoch: 10
-    lr: 0.7e-3
-    save_dir: 'models/nfm/'
-
-run_args:
-  seed: 42
-  gpu: True
-  dataset: 'davis'
-  drug_enc: 'morgan'
-  prot_enc: 'conj_triad'
-  model_to_run: 'DistMult'
-  nfm: True
-  model_file: ''
+    drop_prob: [ 0.2, 0.2 ]
+  preprocess_params:
+    None

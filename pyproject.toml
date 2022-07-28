@@ -1,14 +1,14 @@
 [tool.poetry]
 name = "dti-benchmark"
-version = "0.1.0"
-description = "little part of the big project, raw project"
-authors = ["Dmitrii Traktirov <ds.traktirov@gmail.com>"]
+version = "0.2.0"
+description = "Benchmark creation for drug-target interaction (DTI) prediction task"
+authors = ["Dmitrii Traktirov <ds.traktirov@gmail.com>", "Ellen Kartysheva <>"]
 
 [tool.poetry.dependencies]
 dgl = "0.6.*"
 hydra-core = "^1.1.1"
 pandas = "1.3.5"
-python = "3.7.13"
+python = "3.8.*"
 numpy = "1.21.6"
 rdkit-pypi = "2022.3.2"
 scikit-learn = "1.0.2"
