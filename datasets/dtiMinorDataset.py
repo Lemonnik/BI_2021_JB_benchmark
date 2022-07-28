@@ -2,6 +2,7 @@ import gzip
 import logging
 import os
 from io import BytesIO
+from typing import List
 
 import pandas as pd
 import requests
@@ -67,3 +68,11 @@ class DtiMinor(DatasetWithLabelEncoder):
 
     def _update_processed_data(self) -> None:
         raise NotImplementedError()
+
+    @property
+    def all_drugs(self) -> List[str]:
+        raise NotImplementedError
+
+    @property
+    def all_proteins(self) -> List[str]:
+        raise NotImplementedError
