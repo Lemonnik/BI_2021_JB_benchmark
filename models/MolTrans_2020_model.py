@@ -170,7 +170,8 @@ class MolTransModel(DtiModel, nn.Sequential):
             ys = torch.squeeze(scores).to('cpu').data.numpy()
             # ys = F.softmax(scores, 1).to('cpu').data.numpy()
             predicted_labels = list(map(lambda x: np.argmax(x), ys))
-            predicted_scores = list(map(lambda x: x[1], ys))
+            # TODO: Check how to get scores
+            predicted_scores = torch.sigmoid(scores).detach().cpu().numpy()
             return correct_labels, predicted_labels, predicted_scores
 
 

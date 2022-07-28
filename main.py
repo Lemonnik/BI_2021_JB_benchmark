@@ -38,7 +38,7 @@ class Trainer(object):
 
         for batch in loader:
             self.optimizer.zero_grad()
-            loss = self.model(batch)
+            loss = self.model(batch, device=device)
             loss.backward()
             self.optimizer.step()
 
@@ -68,7 +68,7 @@ class Tester(object):
         T, Y, S = [], [], []
         for params in loader:
             (correct_labels, predicted_labels,
-             predicted_scores) = self.model(params, train=False)
+             predicted_scores) = self.model(params, train=False, device=device)
             T.extend(correct_labels)
             Y.extend(predicted_labels)
             S.extend(predicted_scores)
@@ -95,11 +95,11 @@ def run_model(model,
             'AUC_test\tPrecision_test\tRecall_test')
 
     """ Start training. """
-    print(print('--- Training ---'))
+    print('--- Training ---')
     print(AUCs)
     start = timeit.default_timer()
 
-    for epoch in range(1, n_epochs):
+    for epoch in range(1, n_epochs+1):
 
         if epoch % decay_interval == 0:
             trainer.optimizer.param_groups[0]['lr'] *= lr_decay
@@ -113,6 +113,8 @@ def run_model(model,
 
         AUCs = [epoch, time, loss_train,
                 AUC_test, precision_test, recall_test]
+
+        AUCs = [round(value, 3) for value in AUCs]
 
         if epoch % 1 == 0:
             print('\t'.join(map(str, AUCs)))
