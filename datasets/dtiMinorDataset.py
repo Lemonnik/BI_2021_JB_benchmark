@@ -67,33 +67,3 @@ class DtiMinor(DatasetWithLabelEncoder):
 
     def _update_processed_data(self) -> None:
         raise NotImplementedError()
-
-    def __getitem__(self, idx):
-        """
-        Parameters
-        ----------
-        index : int
-            Index.
-
-        Returns
-        -------
-        Tuple
-            Tuple of features returned. ``return_type`` parameter allows to
-            define what features should be returned.
-        """
-        feats_to_return = []
-
-        ratio = 0.75
-        n = int(ratio * len(self.features['Label']))
-        if self.mode == 'test':
-            idx = idx + n
-
-        for feat in self._return_type:
-            feat_i = self.features[feat][idx]
-            # try:
-            #     feat_i = torch.tensor(feat_i, dtype=torch.float32)
-            # except:
-            #     pass
-            feats_to_return.append(feat_i)
-
-        return tuple(feats_to_return)
