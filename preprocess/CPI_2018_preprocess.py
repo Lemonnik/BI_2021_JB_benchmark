@@ -103,7 +103,7 @@ def dump_dictionary(dictionary, filename):
         pickle.dump(dict(dictionary), f)
 
 
-def CPI_prediction_2018_preprocess(dataset, radius=2, ngram=3):
+def cpi_preprocess(dataset, radius=2, ngram=3):
     """
     Takes dataset instance and preprocesses it for CPI_prediction2018 model.
     All new features are written back to dataset using the `` add_feature`` method.
@@ -159,8 +159,8 @@ def CPI_prediction_2018_preprocess(dataset, radius=2, ngram=3):
         proteins[protein_id] = words
 
     """Encode all drugs and proteins in dataset to obtain new feature lists"""
-    # old_return_type = dataset.return_type
-    # dataset.return_type = ['DrugInd', 'ProtInd', 'Label']
+    old_return_type = dataset.return_type
+    dataset.return_type = ['DrugInd', 'ProtInd', 'Label']
     dataset.mode = 'all'
 
     all_compounds, all_adjacency, all_proteins = [], [], []

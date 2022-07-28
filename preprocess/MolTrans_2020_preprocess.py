@@ -17,29 +17,20 @@ Proceedings of the 54th Annual Meeting of the Association for Computational Ling
 
 from __future__ import unicode_literals, division
 
-import sys
-import os
-import inspect
-import codecs
-import io
 import argparse
-import re
-import warnings
+import codecs
+import os
 import random
+import re
+import sys
 import tempfile
-from multiprocessing import Pool, cpu_count
+# hack for python2/3 compatibility
+from io import open
+from multiprocessing import Pool
 
 import numpy as np
 import pandas as pd
-import torch
-from torch.utils import data
-import json
 
-from sklearn.preprocessing import OneHotEncoder
-
-
-# hack for python2/3 compatibility
-from io import open
 argparse.open = open
 
 

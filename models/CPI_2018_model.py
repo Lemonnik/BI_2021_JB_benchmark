@@ -1,20 +1,12 @@
-import pickle
-import sys
-import timeit
-
 import numpy as np
-
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-import torch.optim as optim
-
-from sklearn.metrics import roc_auc_score, precision_score, recall_score
 
 from models.BaseModel import DtiModel
 
 
-class CompoundProteinInteractionPrediction(DtiModel):
+class CpiModel(DtiModel):
     """
     Implementation of CPI_prediction model detailed in 2018 paper by Tsubaki M, et al.
 
@@ -52,7 +44,7 @@ class CompoundProteinInteractionPrediction(DtiModel):
                  layer_cnn: int,
                  window: int,
                  layer_output: int):
-        super(CompoundProteinInteractionPrediction, self).__init__()
+        super(CpiModel, self).__init__()
         self.dim = dim
         self.n_word = n_word
         self.n_fingerprint = n_fingerprint

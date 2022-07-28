@@ -1,12 +1,9 @@
-import gzip
 import logging
 import os
-from io import BytesIO
 from typing import List
 from urllib.error import URLError
 
 import pandas as pd
-import requests
 from sklearn.preprocessing import LabelEncoder
 
 from datasets.datasetWithLabelEncoder import DatasetWithLabelEncoder
@@ -18,10 +15,11 @@ logger = logging.getLogger('logger')
 class Davis(DatasetWithLabelEncoder):
     _download_link = "https://raw.githubusercontent.com/kexinhuang12345/MolTrans/master/dataset/DAVIS/"
     _label_encoder_filename = "label_encoder.pkl"
-    filenames = {
+    _files_to_download = {
         'train': 'train.csv',
         'test': 'test.csv',
-        'val': 'val.csv',
+        'val': 'val.csv'}
+    _stored_files = {
         'full': 'full.csv'
     }
 
@@ -39,7 +37,7 @@ class Davis(DatasetWithLabelEncoder):
     def _load_raw_data(self) -> None:
         logger.debug("Loading data...")
 
-        dataset = pd.read_csv(os.path.join(self.raw_folder, self.filenames['full']))
+        dataset = pd.read_csv(os.path.join(self.raw_folder, self._stored_files['full']))
         drugs = dataset["SMILES"].unique()
         prots = dataset["Target Sequence"].unique()
 
@@ -68,7 +66,7 @@ class Davis(DatasetWithLabelEncoder):
         # else:
         #     self._encode_by_ind(entities=)
         raise NotImplementedError()
-    
+
     def _update_processed_data(self) -> None:
         """Update processed data (rewrite files train/val/test.csv"""
         raise NotImplementedError()
@@ -84,7 +82,7 @@ class Davis(DatasetWithLabelEncoder):
 
         # download and save all raw datasets (train/val/test)
         dataset = pd.DataFrame()
-        for filename in self.filenames.values():
+        for filename in self._files_to_download.values():
             url = f"{self._download_link}{filename}"
             try:
                 print(f"Downloading {url}")
@@ -94,9 +92,7 @@ class Davis(DatasetWithLabelEncoder):
             except URLError as error:
                 print(f"Failed to download {filename}:\n{error}")
                 continue
-            finally:
-                dataset.to_csv(os.path.join(self.raw_folder, filename))
-                print()
+        dataset.to_csv(os.path.join(self.raw_folder, self._stored_files['full']))
 
     @property
     def all_drugs(self) -> List[str]:
@@ -105,93 +101,3 @@ class Davis(DatasetWithLabelEncoder):
     @property
     def all_proteins(self) -> List[str]:
         raise NotImplementedError
-
-    @property
-    def n_entities(self) -> int:
-        raise NotImplementedError
-
-
-# TODO: Add encoding of smiles and prot seq from ID
-class DtiMinor(DatasetWithLabelEncoder):
-    _download_link = 'http://snap.stanford.edu/biodata/datasets/10002/files/ChG-Miner_miner-chem-gene.tsv.gz'
-    _downloaded_file_name = "DTIMinor.tsv"
-    _label_encoder_filename = "label_encoder.pkl"
-
-    def __init__(self,
-                 root: str,
-                 mode: str = 'train',
-                 force_download: bool = False,
-                 return_type=None) -> None:
-        if return_type is None:
-            return_type = ['DrugInd', 'ProtInd', 'Label']
-        self.label_encoder = LabelEncoder()
-        self._label_encoder_path = None
-
-        super().__init__(root, self._download_link, mode, force_download, return_type)
-
-    def download_from_url(self):
-        """
-        Download data if it's not presented on a device.
-        """
-
-        save_path = os.path.join(self.raw_folder, self._downloaded_file_name)
-
-        if self.download_from_url:
-            if not os.path.exists(self.raw_folder):
-                os.makedirs(self.raw_folder, exist_ok=True)
-
-            # download file
-            resp = requests.get(self._download_link, allow_redirects=True)
-            gzipfl = gzip.GzipFile(fileobj=BytesIO(resp.content))
-
-            with open(save_path, 'w') as file:
-                for row in gzipfl.readlines():
-                    file.write(row.decode())
-
-    def _load_raw_data(self) -> None:
-        logger.debug("Loading data...")
-
-        dataset = pd.read_csv(os.path.join(self.raw_folder, self._downloaded_file_name))
-        drugs = dataset["SMILES"].unique()
-        prots = dataset["Target Sequence"].unique()
-
-        self._encode_by_ind(drugs, prots)
-
-    def _load_processed_data(self) -> None:
-        raise NotImplementedError()
-
-    def _save_processed_data(self) -> None:
-        raise NotImplementedError()
-
-    def _update_processed_data(self) -> None:
-        raise NotImplementedError()
-
-    def __getitem__(self, idx):
-        """
-        Parameters
-        ----------
-        index : int
-            Index.
-
-        Returns
-        -------
-        Tuple
-            Tuple of features returned. ``return_type`` parameter allows to
-            define what features should be returned.
-        """
-        feats_to_return = []
-
-        ratio = 0.75
-        n = int(ratio * len(self.features['Label']))
-        if self.mode == 'test':
-            idx = idx + n
-
-        for feat in self._return_type:
-            feat_i = self.features[feat][idx]
-            # try:
-            #     feat_i = torch.tensor(feat_i, dtype=torch.float32)
-            # except:
-            #     pass
-            feats_to_return.append(feat_i)
-
-        return tuple(feats_to_return)

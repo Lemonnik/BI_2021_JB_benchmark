@@ -1,4 +1,4 @@
-from abc import ABC, abstractmethod
+from abc import ABC
 
 from torch.nn import Module
 
@@ -16,14 +16,9 @@ class DtiModel(Module, ABC):
     """
 
     @property
+    def device(self):
+        return next(self.parameters()).device
+
+    @property
     def return_type(self):
         return self._return_type
-
-    @abstractmethod
-    def __call__(self, data, train=True):
-        """
-        Should call ``forward`` method and return:
-            loss in `train` mode
-            correct_labels, predicted_labels, predicted_scores if not in `train` mode
-        """
-        ...

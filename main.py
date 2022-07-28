@@ -1,15 +1,14 @@
-import hydra
-from omegaconf import DictConfig
 import os
 import time
 import timeit
-# import wandb
 
+import hydra
 import torch
-from torch.utils.data import DataLoader
+from omegaconf import DictConfig
 from sklearn.metrics import precision_score, recall_score, roc_auc_score
+from torch.utils.data import DataLoader
 
-from datasets.datasets import Davis
+from datasets.davisDataset import Davis
 from model_and_preprocess_selection import select_model, preprocess_dataset
 
 
@@ -32,17 +31,18 @@ class Trainer(object):
         dataset.mode = 'train'
         loader = DataLoader(dataset, batch_size=batch_size, drop_last=True)
 
+        self.model.to(device)
         self.model.train()
 
         loss_total = 0
 
-        for params in loader:
+        for batch in loader:
             self.optimizer.zero_grad()
-            loss = self.model(params, device=device)
+            loss = self.model(batch)
             loss.backward()
             self.optimizer.step()
 
-            loss_total += loss.to('cpu').data.numpy()
+            loss_total += loss.item()
         return loss_total
 
 
@@ -68,7 +68,7 @@ class Tester(object):
         T, Y, S = [], [], []
         for params in loader:
             (correct_labels, predicted_labels,
-             predicted_scores) = self.model(params, train=False, device=device)
+             predicted_scores) = self.model(params, train=False)
             T.extend(correct_labels)
             Y.extend(predicted_labels)
             S.extend(predicted_scores)
@@ -125,7 +125,7 @@ def main(cfg: DictConfig) -> None:
 
     """ Load dataset """
     # TODO: (HERE USER SHOULD CHOOSE DATASET TO LOAD)
-    dataset = Davis(base_path, download=True)
+    dataset = Davis(base_path, force_download=True)
     # atm. dataset contains all information (train and test)
     # we can decide what part should be returned by changing ``mode``
 

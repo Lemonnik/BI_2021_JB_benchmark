@@ -1,19 +1,17 @@
 from __future__ import print_function
-import torch
-from torch import nn
-import torch.utils.data as Data
-import torch.nn.functional as F
-from torch.autograd import Variable
-import numpy as np
 
-import collections
-import math
 import copy
+import math
 
-from models.BaseModel import DTI_model
+import numpy as np
+import torch
+import torch.nn.functional as F
+from torch import nn
+
+from models.BaseModel import DtiModel
 
 
-class MolTrans_model(DTI_model, nn.Sequential):
+class MolTransModel(DtiModel, nn.Sequential):
     """
     Implementation of MolTrans model detailed in 2020 paper by Huang K., et al.
     Interaction Network with 2D interaction map.
@@ -36,7 +34,7 @@ class MolTrans_model(DTI_model, nn.Sequential):
     """
 
     def __init__(self, **config):
-        super(MolTrans_model, self).__init__()
+        super(MolTransModel, self).__init__()
 
         self._return_type = ['drug_values', 'prot_values', 'drug_masks', 'prot_masks', 'Label']
 

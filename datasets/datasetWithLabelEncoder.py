@@ -35,6 +35,7 @@ class DatasetWithLabelEncoder(DtiDataset, ABC):
         """
         entities = np.append(drugs, proteins)
         self.label_encoder.fit(entities)
+        self._n_entities = len(self.label_encoder.classes_)
         self._label_encoder_path = os.path.join(self.raw_folder, self._label_encoder_filename)
 
         with open(self._label_encoder_path, "wb") as le_dump_file:

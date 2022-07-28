@@ -1,8 +1,10 @@
 import torch
 import torch.nn as nn
 
+from models.BaseModel import DtiModel
 
-class NFM(nn.Module):
+
+class NFM(DtiModel):
     """
     Neural Factorization Machine (NFM) model.
 
@@ -11,6 +13,7 @@ class NFM(nn.Module):
     X He, TS Chua (2017):
         https://arxiv.org/abs/1708.05027
     """
+
     def __init__(self, num_features: int, num_factors: int, layers: list, batch_norm: bool, drop_prob: list):
         super(NFM, self).__init__()
         """
@@ -38,13 +41,15 @@ class NFM(nn.Module):
         self.batch_norm = batch_norm
         self.drop_prob = drop_prob
 
+        self._return_type = ['DrugInd', 'ProtInd', 'Label']
+
         self.embeddings = nn.Embedding(num_features, num_factors)
         self.biases = nn.Embedding(num_features, 1)
         self.bias_ = nn.Parameter(torch.tensor([0.0]))
 
         FM_modules = []
         if self.batch_norm:
-            FM_modules.append(nn.BatchNorm1d(num_factors))      
+            FM_modules.append(nn.BatchNorm1d(num_factors))
         FM_modules.append(nn.Dropout(drop_prob[0]))
         self.FM_layers = nn.Sequential(*FM_modules)
 
@@ -100,7 +105,7 @@ class NFM(nn.Module):
         Returns
         -------
         logits : torch.tensor[batch_size]
-            Probabilites-like array showing the "probability" of the existance of relation.
+            Probabilities-like array showing the "probability" of the existence of relation.
         """
         nonzero_embed = self.embeddings(features)             # shape: (batch_size, n_feats, dimension)
         feature_values = feature_values.unsqueeze(dim=-1)     # shape: (batch_size, n_feats, 1)

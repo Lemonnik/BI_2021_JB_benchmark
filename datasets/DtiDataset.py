@@ -42,6 +42,7 @@ class DtiDataset(Dataset, ABC):
             return_type = ['DrugInd', 'ProtInd', 'Label']
         if isinstance(root, torch._six.string_classes):
             root = os.path.expanduser(root)
+        self._n_entities = None
         self.root = root
         self.mode = mode
         self.features = {rt: None for rt in return_type}
@@ -138,9 +139,8 @@ class DtiDataset(Dataset, ABC):
         ...
 
     @property
-    @abstractmethod
     def n_entities(self) -> int:
-        ...
+        return self._n_entities
 
     @property
     def raw_folder(self) -> str:
