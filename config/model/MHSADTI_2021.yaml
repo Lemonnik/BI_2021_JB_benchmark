@@ -1,0 +1,34 @@
+name: MHSADTI_2021
+model_params:
+  dim: 10
+  layer_gnn: 3
+  layer_cnn: 3
+  window: 11
+  layer_output: 3
+  N: 1
+  d_model: 128
+  d_ff: 512
+  h: 8
+  dropout: 0.1
+  MAX_LEN: 3000
+preprocess_params:
+  radius: 2
+  ngram: 3
+  graph_max: 250
+  seq_max: 3000
+batch_size: 1
+epoch: 5
+
+
+#parser['layer_gnn'] = 3
+#parser['window'] = 11
+#parser['layer_cnn'] = 3
+#parser['layer_output'] = 3
+#parser['lr'] = 1e-3
+#parser['lr_decay'] = 0.5
+#parser['decay_interval'] = 10
+#parser['weight_decay'] = 1e-6
+#parser['iteration'] = 100
+#parser['save_name_append'] = 'test'
+#parser['seed'] = 1234
+#parser['batch_size'] = 24
