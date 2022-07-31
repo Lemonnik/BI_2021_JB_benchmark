@@ -116,10 +116,14 @@ def run_model(model,
         AUCs = [epoch, time, loss_train,
                 AUC_test, precision_test, recall_test]
 
-        AUCs = [round(value, 3) for value in AUCs]
+        if epoch % print_every == 0:
+            print(f'{epoch:>5d} '
+                  f'{time:>11.3f} '
+                  f'{loss_train:>12.5f} '
+                  f'{AUC_test:>9.5f} '
+                  f'{precision_test:>17.5f} '
+                  f'{recall_test:>12.5f} ')
 
-        if epoch % 1 == 0:
-            print('\t'.join(map(str, AUCs)))
 
 @hydra.main(version_base="1.2", config_path="config", config_name="config")
 def main(cfg: DictConfig) -> None:
