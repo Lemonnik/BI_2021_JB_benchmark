@@ -11,10 +11,14 @@ preprocess_functions = {'CPI_2018': cpi_preprocess,
                         'MolTrans_2020': moltrans_preprocess}
 
 
-def select_model(model_name: str, params: DictConfig, dataset):
+def select_model(model_params: DictConfig, dataset):
     """
        Model selection must be stated here for each model.
     """
+
+    model_name = model_params.name
+    params = model_params.model_params
+
     if model_name == 'DistMult':
         model = DistMult(n_nodes=dataset.n_entities,
                          n_relations=2,
@@ -41,19 +45,22 @@ def select_model(model_name: str, params: DictConfig, dataset):
     return model
 
 
-def preprocess_dataset(model_name: str, params: DictConfig, dataset):
+def preprocess_dataset(model: DictConfig, dataset):
     """
         Preprocesses the dataset using function from preprocess_functions dictionary.
         Each model must have its own preprocessing function,
             that adds required features to dataset via 'add_feature' method
         or 'None' value if preprocessing is not needed.
     """
-    if params == 'None':
+
+    model_name = model.name
+
+    if model.preprocess_params == 'None':
         return dataset
     if model_name not in preprocess_functions.keys():
         raise ValueError(
             f'Preprocessing is not stated for {model_name} model in model_and_preprocess_selection.py file.')
 
-    if preprocess_functions[model_name]:
-        dataset = preprocess_functions[model_name](dataset, **params)
+    dataset = preprocess_functions[model_name](dataset, **model.preprocess_params)
+
     return dataset

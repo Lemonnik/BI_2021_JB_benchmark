@@ -1,0 +1,8 @@
+name: DistMult
+model_params:
+  embed_dim: 100
+preprocess_params:
+  None
+lr: 0.7e-3
+batch_size: 64
+epoch: 10

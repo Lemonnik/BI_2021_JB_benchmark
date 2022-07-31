@@ -3,6 +3,7 @@ import time
 import timeit
 
 import hydra
+from hydra.utils import get_original_cwd, to_absolute_path
 import torch
 from omegaconf import DictConfig
 from sklearn.metrics import precision_score, recall_score, roc_auc_score
@@ -82,9 +83,10 @@ def run_model(model,
               dataset, 
               device,
               batch_size=64, 
-              n_epochs=100, 
+              n_epochs=100,
+              print_every=10,
               lr_decay=0.5, 
-              decay_interval=10, 
+              decay_interval=10,
               lr=0.7e-3, 
               weight_decay=1e-6):
 
@@ -119,31 +121,28 @@ def run_model(model,
         if epoch % 1 == 0:
             print('\t'.join(map(str, AUCs)))
 
-
-@hydra.main(version_base="1.1", config_path="config", config_name="config")
+@hydra.main(version_base="1.2", config_path="config", config_name="config")
 def main(cfg: DictConfig) -> None:
-
-    base_path = cfg.base_path
 
     """ Load dataset """
     # TODO: (HERE USER SHOULD CHOOSE DATASET TO LOAD)
-    dataset = Davis(base_path, force_download=True)
+    dataset = Davis(cfg.base_path, force_download=cfg.dataset.force_download)
     # atm. dataset contains all information (train and test)
     # we can decide what part should be returned by changing ``mode``
 
     # wandb.init(project="DTI-prediction")
 
-    # Path to save checkpoints later
+    # Path to save checkpoints
     curr_date = time.strftime('%d-%m-%Y')
     curr_time = time.strftime('%H-%M-%S')
-    model_save_path = os.path.join(base_path, curr_date, curr_time)
+    model_save_path = os.path.join(cfg.base_path, curr_date, curr_time)
 
     # Define SEED and DEVICE
     torch.manual_seed(cfg.seed)
 
     """ Preprocess selection """
     print('--- Data Preparation ---')
-    dataset = preprocess_dataset(cfg.model_name, cfg[cfg.model_name].preprocess_params, dataset)
+    dataset = preprocess_dataset(cfg.model, dataset)
     print('--- Finished ---\n')
 
     """ Device selection"""
@@ -156,17 +155,18 @@ def main(cfg: DictConfig) -> None:
 
     """ Model selection """
     print('--- Model Preparation ---')
-    model = select_model(cfg.model_name, cfg[cfg.model_name].model_params, dataset)
+    model = select_model(cfg.model, dataset)
     model = model.to(device)
     print(f'--- Using model {type(model).__name__} ---\n')
 
     """ Run model """
-    # TODO: choose default batch_size/n_epoch/etc if parameter is not stated in cfg[cfg.model_name]
+    # TODO: choose default batch_size/n_epoch/etc if parameter is not stated in cfg.model
     run_model(model=model,
               dataset=dataset,
               device=device,
-              batch_size=cfg[cfg.model_name].batch_size,
-              n_epochs=cfg[cfg.model_name].epoch)
+              print_every=cfg.print_every,
+              batch_size=cfg.model.batch_size,
+              n_epochs=cfg.model.epoch)
 
 
 if __name__ == '__main__':

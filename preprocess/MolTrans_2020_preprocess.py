@@ -383,18 +383,18 @@ def moltrans_preprocess(dataset, max_drug_seq=50, max_protein_seq=545):
         All new features are written back to dataset using ``add_feature`` method.
     """
 
-    vocab_path = '../../../preprocess/MolTransFiles/protein_codes_uniprot.txt'
+    vocab_path = 'preprocess/MolTransFiles/protein_codes_uniprot.txt'
     bpe_codes_protein = codecs.open(vocab_path)
     pbpe = BPE(bpe_codes_protein, merges=-1, separator='')
-    sub_csv = pd.read_csv('../../../preprocess/MolTransFiles/subword_units_map_uniprot.csv')
+    sub_csv = pd.read_csv('preprocess/MolTransFiles/subword_units_map_uniprot.csv')
 
     idx2word_p = sub_csv['index'].values
     words2idx_p = dict(zip(idx2word_p, range(0, len(idx2word_p))))
 
-    vocab_path = '../../../preprocess/MolTransFiles/drug_codes_chembl.txt'
+    vocab_path = 'preprocess/MolTransFiles/drug_codes_chembl.txt'
     bpe_codes_drug = codecs.open(vocab_path)
     dbpe = BPE(bpe_codes_drug, merges=-1, separator='')
-    sub_csv = pd.read_csv('../../../preprocess/MolTransFiles/subword_units_map_chembl.csv')
+    sub_csv = pd.read_csv('preprocess/MolTransFiles/subword_units_map_chembl.csv')
 
     idx2word_d = sub_csv['index'].values
     words2idx_d = dict(zip(idx2word_d, range(0, len(idx2word_d))))
