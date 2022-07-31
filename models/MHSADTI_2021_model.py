@@ -306,10 +306,6 @@ class PositionalEncoding(nn.Module):
         self.register_buffer('pe', pe)
 
     def forward(self, x):
-        print(x)
-        print(x.shape)
-        print(Variable(self.pe[:, :x.size(1)], requires_grad=False))
-        print(Variable(self.pe[:, :x.size(1)], requires_grad=False).shape)
         x = x+Variable(self.pe[:, :x.size(1)], requires_grad=False)
         return self.dropout(x)
 

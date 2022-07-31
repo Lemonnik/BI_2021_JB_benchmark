@@ -54,7 +54,7 @@ def mhsadti_preprocess(dataset, radius, ngram, graph_max, seq_max):
     dataset.add_feature(feat_name="compounds_mhsadti", feat_values=all_compounds)
     dataset.add_feature(feat_name="compound_masks_mhsadti", feat_values=all_compounds_mask)
     dataset.add_feature(feat_name="adjacencies_mhsadti", feat_values=all_adjs)
-    dataset.add_feature(feat_name="proteins_mhsadti", feat_values=proteins)
+    dataset.add_feature(feat_name="proteins_mhsadti", feat_values=all_proteins)
     dataset.add_feature(feat_name="protein_masks_mhsadti", feat_values=all_proteins_mask)
 
     """Return result dataset"""
