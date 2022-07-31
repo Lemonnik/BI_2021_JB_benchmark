@@ -79,16 +79,17 @@ class Tester(object):
         return auc_test, precision, recall
 
 
-def run_model(model, 
-              dataset, 
+def run_model(model,
+              dataset,
               device,
-              batch_size=64, 
+              batch_size=64,
               n_epochs=100,
               print_every=10,
-              lr_decay=0.5, 
+              lr_decay=0.5,
               decay_interval=10,
-              lr=0.7e-3, 
-              weight_decay=1e-6):
+              lr=0.7e-3,
+              weight_decay=1e-6,
+              **kwargs):
 
     trainer = Trainer(model, lr, weight_decay)
     tester = Tester(model)
@@ -168,9 +169,13 @@ def main(cfg: DictConfig) -> None:
     run_model(model=model,
               dataset=dataset,
               device=device,
-              print_every=cfg.print_every,
-              batch_size=cfg.model.batch_size,
-              n_epochs=cfg.model.epoch)
+              **cfg.model)
+              # lr=cfg.model.lr,
+              # lr_decay=cfg.model.lr_decay,
+              # decay_interval=cfg.model.decay_interval,
+              # print_every=cfg.print_every,
+              # batch_size=cfg.model.batch_size,
+              # n_epochs=cfg.model.epoch)
 
 
 if __name__ == '__main__':

@@ -306,11 +306,15 @@ class PositionalEncoding(nn.Module):
         self.register_buffer('pe', pe)
 
     def forward(self, x):
+        print(x)
+        print(x.shape)
+        print(Variable(self.pe[:, :x.size(1)], requires_grad=False))
+        print(Variable(self.pe[:, :x.size(1)], requires_grad=False).shape)
         x = x+Variable(self.pe[:, :x.size(1)], requires_grad=False)
         return self.dropout(x)
 
 
-def make_model(src_vocab, N=6, d_model=512, d_ff=2048, h=8, dropout=0.1, MAX_LEN=5038):
+def make_model(src_vocab, N, d_model, d_ff, h, dropout, MAX_LEN):
     c = copy.deepcopy
     attn = MultiHeadedAttention(h, d_model)
     ff = PositionwiseFeedForward(d_model, d_ff, dropout)
@@ -323,6 +327,6 @@ def make_model(src_vocab, N=6, d_model=512, d_ff=2048, h=8, dropout=0.1, MAX_LEN
 
     for p in model.parameters():
         if p.dim() > 1:
-            nn.init.xavier_uniform(p)
+            nn.init.xavier_uniform_(p)
 
     return model
