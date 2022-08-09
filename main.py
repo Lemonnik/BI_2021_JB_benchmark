@@ -135,7 +135,9 @@ def main(cfg: DictConfig) -> None:
 
     """ Load dataset """
     # TODO: (HERE USER SHOULD CHOOSE DATASET TO LOAD)
-    dataset = Davis(cfg.base_path, force_download=cfg.dataset.force_download)
+    dataset = Davis(cfg.base_path,
+                    force_download=cfg.dataset.force_download,
+                    load_from_raw=cfg.dataset.force_download)
     # atm. dataset contains all information (train and test)
     # we can decide what part should be returned by changing ``mode``
 
@@ -152,6 +154,8 @@ def main(cfg: DictConfig) -> None:
     """ Preprocess selection """
     print('--- Data Preparation ---')
     dataset = preprocess_dataset(cfg.model, dataset)
+    # TODO: how about remove protection from method? So we could save our processed dataset after preprocessing
+    dataset._save_processed_data()
     print('--- Finished ---\n')
 
     """ Device selection"""

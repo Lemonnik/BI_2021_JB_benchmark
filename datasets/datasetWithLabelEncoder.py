@@ -48,6 +48,8 @@ class DatasetWithLabelEncoder(DtiDataset, ABC):
 
     def _load_label_encoder(self):
         # Todo: add checks and errors
+        # TODO: do we need individual LabelEncoder for processed data folder?
+        self._label_encoder_path = os.path.join(self.raw_folder, self._label_encoder_filename)
         if os.path.exists(self._label_encoder_path):
             logger.debug("Loading existing label encoder...")
             with open(self._label_encoder_path, 'rb') as le_dump_file:
