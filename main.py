@@ -94,8 +94,12 @@ def run_model(model,
     trainer = Trainer(model, lr, weight_decay)
     tester = Tester(model)
 
-    AUCs = ('Epoch\tTime(sec)\tLoss_train\t'
-            'AUC_test\tPrecision_test\tRecall_test')
+    AUCs = ('Epoch    '
+            'Time(sec)     '
+            'Loss_train     '
+            'AUC_test     '
+            'Precision_test    '
+            'Recall_test')
 
     """ Start training. """
     print('--- Training ---')
@@ -120,10 +124,10 @@ def run_model(model,
         if epoch % print_every == 0:
             print(f'{epoch:>5d} '
                   f'{time:>11.3f} '
-                  f'{loss_train:>12.5f} '
-                  f'{AUC_test:>9.5f} '
-                  f'{precision_test:>17.5f} '
-                  f'{recall_test:>12.5f} ')
+                  f'{loss_train:>15.5f} '
+                  f'{AUC_test:>12.5f} '
+                  f'{precision_test:>18.5f} '
+                  f'{recall_test:>14.5f} ')
 
 
 @hydra.main(version_base="1.2", config_path="config", config_name="config")

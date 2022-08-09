@@ -157,10 +157,14 @@ class MhsadtiModel(DtiModel):
         device = self.device
 
         fingerprints, fingerprints_mask, adjacency, words, words_mask = inputs
-        fingerprints = torch.squeeze(fingerprints, 0).type(torch.LongTensor).to(device)
-        adjacency = torch.squeeze(adjacency, 0).type(torch.FloatTensor).to(device)
-        words = torch.squeeze(words, 0).type(torch.LongTensor).to(device)
+
+        fingerprints = fingerprints.type(torch.LongTensor).to(device)
+        fingerprints_mask = fingerprints_mask.type(torch.LongTensor).to(device)
+        adjacency = adjacency.type(torch.FloatTensor).to(device)
+        words = words.type(torch.LongTensor).to(device)
+        words_mask = words_mask.type(torch.LongTensor).to(device)
         correct_interaction = correct_interaction.type(torch.LongTensor).to(device)
+
         inputs = [fingerprints, fingerprints_mask, adjacency, words, words_mask]
 
         predicted_interaction = self.forward(inputs)

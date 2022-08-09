@@ -20,5 +20,6 @@ lr: 1e-3
 lr_decay: 0.5
 decay_interval: 10
 weight_decay: 1e-6
-batch_size: 24
-epoch: 5
+batch_size: 5 # was 24, but cause memory problems
+n_epochs: 5
+print_every: 1
