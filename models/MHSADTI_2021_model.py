@@ -27,14 +27,33 @@ class MhsadtiModel(DtiModel):
 
     Notes
     -----
-    All code is taken from authors' orignal github with small changes
+    All code is taken from authors' original GitHub with small changes
     https://github.com/czjczj/MHSADTI
 
     Parameters
     ----------
-    dim: int
+    dim : int
         Dimension of embedding space.
-
+    n_word : int
+        Proteins are defined as n-gram (or n_word) amino acids.
+        Each protein is split into an overlapping n-gram amino acid sequence (split into words)
+        in order to obtain low-dimensional real-valued vector representations of protein sequence.
+            E.x. if n_word = 3 then: MAAVRM...LDLK → "MAA", "AAV", "AVR", ..., "LDL", "DLK".
+            Each triplet called a word.
+    window : int
+        Defines how many words are going to be concatenated before sending to CNN.
+        E.x. if window = 3, then "MAA", "AAV", "AVR", "LDL", "DLK" will be concatenated as
+        ["MAA"; "AAV"; "AVR"], ["AAV"; "AVR"; "LDL"], ["AVR"; "LDL"; "DLK"]
+    n_fingerprint : int
+        Number of different fingerprints (combinations of particular atom and its neighborhood)
+        that were extracted in CPI_2018_preprocess.py during preprocessing stage.
+    layer_gnn : int
+        Number of time steps in GNN.
+    layer_cnn : int
+        Number of layers in CNN.
+    layer_output : int
+        Number of layers that learn on concatenated compound and protein vectors.
+    TODO: other parameters
     """
 
     def __init__(self,

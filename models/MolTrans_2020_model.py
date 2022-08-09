@@ -25,12 +25,12 @@ class MolTransModel(DtiModel, nn.Sequential):
 
     Notes
     -----
-    All code is taken from authors' orignal github with non-significant changes
+    All code is taken from authors' original GitHub with non-significant changes
     https://github.com/kexinhuang12345/MolTrans
 
     Parameters
     ----------
-
+    TODO: fill in the gaps )((
     """
 
     def __init__(self, **config):
