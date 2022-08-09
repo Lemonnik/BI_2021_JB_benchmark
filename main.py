@@ -39,7 +39,7 @@ class Trainer(object):
 
         for batch in loader:
             self.optimizer.zero_grad()
-            loss = self.model(batch, device=device)
+            loss = self.model(batch)
             loss.backward()
             self.optimizer.step()
 
@@ -69,7 +69,7 @@ class Tester(object):
         T, Y, S = [], [], []
         for params in loader:
             (correct_labels, predicted_labels,
-             predicted_scores) = self.model(params, train=False, device=device)
+             predicted_scores) = self.model(params, train=False)
             T.extend(correct_labels)
             Y.extend(predicted_labels)
             S.extend(predicted_scores)

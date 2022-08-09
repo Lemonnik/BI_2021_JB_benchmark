@@ -27,12 +27,6 @@ class CpiModel(DtiModel):
     ----------
     dim: int
         Dimension of embedding space.
-    n_filters: int
-        Number of filters used for convolution.
-    n_entities: int
-        Number of entities in the current data set.
-    n_relations: int
-        Number of relations in the current data set.
 
     """
 

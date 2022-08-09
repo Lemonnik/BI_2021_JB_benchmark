@@ -140,8 +140,9 @@ class MolTransModel(DtiModel, nn.Sequential):
         scores = self.decoder(f)
         return scores
 
-    def __call__(self, data, train=True, device='cpu'):
+    def __call__(self, data, train=True):
         d, p, d_mask, p_mask, correct_interaction = data
+        device = self.device
 
         # TODO: solve memory problem
         # Process finished with exit code 137 (interrupted by signal 9: SIGKILL)

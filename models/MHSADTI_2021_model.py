@@ -152,8 +152,9 @@ class MhsadtiModel(DtiModel):
 
         return torch.squeeze(interaction, 1)
 
-    def __call__(self, data, train=True, device='cpu'):
+    def __call__(self, data, train=True):
         inputs, correct_interaction = data[:-1], data[-1]
+        device = self.device
 
         fingerprints, fingerprints_mask, adjacency, words, words_mask = inputs
         fingerprints = torch.squeeze(fingerprints, 0).type(torch.LongTensor).to(device)
