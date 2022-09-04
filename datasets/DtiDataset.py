@@ -31,7 +31,7 @@ class DtiDataset(Dataset, ABC):
         Defines what features will be returned by ``__getitem__``.
         All features must be in ``self.features`` dictionary.
     load_from_raw : bool
-        If TRUE, program tries to load processed data, if exist.
+        If FALSE, program tries to load processed data, if exist.
         Otherwise -- load raw data even if processed data exist.
     """
 

@@ -22,12 +22,13 @@ class DatasetWithLabelEncoder(DtiDataset, ABC):
                  download_link: Optional[str] = None,
                  mode: str = 'train',
                  force_download: bool = False,
-                 return_type=None) -> None:
+                 return_type=None,
+                 load_from_raw: bool = False) -> None:
         if return_type is None:
             return_type = ['DrugInd', 'ProtInd', 'Label']
         self.label_encoder = LabelEncoder()
         self._label_encoder_path = None
-        super().__init__(root, download_link, mode, force_download, return_type)
+        super().__init__(root, download_link, mode, force_download, return_type, load_from_raw)
 
     def _encode_by_ind(self, drugs, proteins) -> None:
         """

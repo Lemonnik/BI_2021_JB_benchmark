@@ -137,7 +137,7 @@ def main(cfg: DictConfig) -> None:
     # TODO: (HERE USER SHOULD CHOOSE DATASET TO LOAD)
     dataset = Davis(cfg.base_path,
                     force_download=cfg.dataset.force_download,
-                    load_from_raw=cfg.dataset.force_download)
+                    load_from_raw=cfg.dataset.load_from_raw)
     # atm. dataset contains all information (train and test)
     # we can decide what part should be returned by changing ``mode``
 
