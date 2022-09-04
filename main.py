@@ -11,6 +11,7 @@ from torch.utils.data import DataLoader
 
 from datasets.davisDataset import Davis
 from model_and_preprocess_selection import select_model, preprocess_dataset
+from select_dataset import select_dataset
 
 
 class Trainer(object):
@@ -133,11 +134,9 @@ def run_model(model,
 @hydra.main(version_base="1.2", config_path="config", config_name="config")
 def main(cfg: DictConfig) -> None:
 
-    """ Load dataset """
+    """ Dataset selection and loading """
     # TODO: (HERE USER SHOULD CHOOSE DATASET TO LOAD)
-    dataset = Davis(cfg.base_path,
-                    force_download=cfg.dataset.force_download,
-                    load_from_raw=cfg.dataset.load_from_raw)
+    dataset = select_dataset(cfg.base_path, cfg.dataset)
     # atm. dataset contains all information (train and test)
     # we can decide what part should be returned by changing ``mode``
 
