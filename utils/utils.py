@@ -4,7 +4,7 @@ from rdkit import Chem
 from rdkit import DataStructs
 from rdkit.Chem import AllChem
 
-from pybiomed_helper import CalculateConjointTriad
+from utils.pybiomed_helper import CalculateConjointTriad
 
 
 def _encode_by_ind(self):

@@ -20,7 +20,7 @@ class CpiModel(DtiModel):
 
     Notes
     -----
-    All code is taken from authors' original GitHub with some changes
+    All code is adapted from authors' original GitHub
     https://github.com/masashitsubaki/CPI_prediction
 
     Parameters

@@ -22,7 +22,7 @@ class DatasetWithLabelEncoder(DtiDataset, ABC):
                  download_link: Optional[str] = None,
                  mode: str = 'train',
                  force_download: bool = False,
-                 return_type=None,
+                 return_type: list = None,
                  load_from_raw: bool = False) -> None:
         if return_type is None:
             return_type = ['DrugInd', 'ProtInd', 'Label']
@@ -32,7 +32,7 @@ class DatasetWithLabelEncoder(DtiDataset, ABC):
 
     def _encode_by_ind(self, drugs, proteins) -> None:
         """
-        Encode drugs and targets by Index
+        Encode drugs and targets by Index.
         """
         entities = np.append(drugs, proteins)
         self.label_encoder.fit(entities)
@@ -47,7 +47,7 @@ class DatasetWithLabelEncoder(DtiDataset, ABC):
         self._unique_proteins = self.entity_to_ind(proteins)
         self._n_entities = len(entities)
 
-    def _load_label_encoder(self):
+    def _load_label_encoder(self) -> None:
         # Todo: add checks and errors
         # TODO: do we need individual LabelEncoder for processed data folder?
         self._label_encoder_path = os.path.join(self.raw_folder, self._label_encoder_filename)
@@ -55,40 +55,64 @@ class DatasetWithLabelEncoder(DtiDataset, ABC):
             logger.debug("Loading existing label encoder...")
             with open(self._label_encoder_path, 'rb') as le_dump_file:
                 self.label_encoder = pickle.load(le_dump_file)
-            logger.debug("Loaded succesfully.\n")
+            logger.debug("Loaded successfully.\n")
             # attribute
             self._n_entities = len(self.label_encoder.classes_)
 
-    def ind_to_entity(self, ind: list) -> List:
+    def ind_to_entity(self, ind: list) -> list:
         """
-        Gets list of drugs/proteins IND's.
-        Returns SMILES strings/Target Sequences.
+        Converts list of indexes (labels) into list of entities (SMILES or Protein sequences).
+
+        Parameters
+        ----------
+        ind : list
+            List of drugs/proteins indexes (labels).
+
+        Returns
+        -------
+        list
+            SMILES strings/Target Sequences.
         """
         # return [self.label_encoder.classes_[i] for i in ind]
         return self.label_encoder.inverse_transform(ind).tolist()
 
-    def entity_to_ind(self, s: list) -> List:
+    def entity_to_ind(self, s: list) -> list:
         """
-        Gets list of SMILES strings/Target Sequences.
-        Returns their indexes (IND's).
+        Converts list of entities (SMILES or Protein sequences) into their indexes (labels).
+
+        Parameters
+        ----------
+        s : list
+            List of SMILES strings/Target Sequences.
+
+        Returns
+        -------
+        list
+            Indexes (labels)
         """
         return self.label_encoder.transform(s).tolist()
 
     def __len__(self) -> int:
+        """
+        Length of the dataset (number of drug-target pairs for which there is a Label).
+        If 'self.mode' in train/test/val then length of the chosen (train/test/val) part will be returned.
+        """
         # return len(self.features['Label'])
         # TODO: Normal train/test/val split
         ratio = 0.75
         n = int(ratio * len(self.features['Label']))
-        if self.mode == 'train':
+        if self.mode == 'all':
+            return len(self.features['Label'])
+        elif self.mode == 'train':
             return len(self.features['Label'][:n])
         else:
             return len(self.features['Label'][n:])
 
-    def __getitem__(self, idx):
+    def __getitem__(self, idx) -> tuple:
         """
         Parameters
         ----------
-        index : int
+        idx : int
             Index.
 
         Returns

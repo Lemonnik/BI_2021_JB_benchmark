@@ -27,7 +27,7 @@ class MhsadtiModel(DtiModel):
 
     Notes
     -----
-    All code is taken from authors' original GitHub with small changes
+    All code is adapted from authors' original GitHub
     https://github.com/czjczj/MHSADTI
 
     Parameters
@@ -52,8 +52,21 @@ class MhsadtiModel(DtiModel):
     layer_cnn : int
         Number of layers in CNN.
     layer_output : int
-        Number of layers that learn on concatenated compound and protein vectors.
-    TODO: other parameters
+        Number of layers that will learn on concatenated compound and protein vectors.
+
+    N: int
+        The number of multi-head self-attention layers.
+    d_model: int
+        Size of Multi Headed Attention layers.
+    d_ff: int
+        There are linear layers in multi-head self-attention, that
+        will convert vectors' sizes as: d_model -> d_ff -> d_model
+    h: int
+        TODO: check
+    dropout: float
+        Drop out size in multi-head self-attention layers.
+    MAX_LEN: int
+        Maximum protein length.
     """
 
     def __init__(self,
@@ -105,7 +118,7 @@ class MhsadtiModel(DtiModel):
         self.W_interaction = nn.Linear(2*self.dim, 2)
 
         self.trans = make_model(self.n_word,
-                                N=N,
+                                N=self.N,
                                 d_model=self.d_model,
                                 d_ff=self.d_ff,
                                 h=self.h,
@@ -192,7 +205,7 @@ class MhsadtiModel(DtiModel):
             loss = F.cross_entropy(predicted_interaction, correct_interaction)
             return loss
         else:
-            # TODO: check whether my personal changes is OK
+            # TODO: check whether my personal changes are OK
             # return predicted_interaction
             correct_labels = correct_interaction.to('cpu').data.numpy()
             ys = F.softmax(predicted_interaction, 1).to('cpu').data.numpy()
@@ -247,7 +260,7 @@ class SublayerConnection(nn.Module):
 
 
 class EncoderLayer(nn.Module):
-    def __init__(self,size,self_attn, feed_forward, dropout):
+    def __init__(self, size, self_attn, feed_forward, dropout):
         super(EncoderLayer, self).__init__()
         self.self_attn = self_attn
         self.feed_forward = feed_forward
@@ -261,9 +274,9 @@ class EncoderLayer(nn.Module):
 
 def attention(query, key, value, mask=None, dropout=None):
     d_k = query.size(-1)
-    scores = torch.matmul(query, key.transpose(-2,-1))/math.sqrt(d_k)
+    scores = torch.matmul(query, key.transpose(-2, -1))/math.sqrt(d_k)
     if mask is not None:
-        scores = scores.masked_fill(mask==0, -1e9)
+        scores = scores.masked_fill(mask == 0, -1e9)  # TODO: check ==
     p_attn = F.softmax(scores, dim=-1)
     if dropout is not None:
         p_attn = dropout(p_attn)
@@ -281,7 +294,7 @@ class MultiHeadedAttention(nn.Module):
         assert d_model % h == 0
         self.d_k = d_model//h
         self.h = h
-        self.linears = clones(nn.Linear(d_model,d_model), 4)
+        self.linears = clones(nn.Linear(d_model, d_model), 4)
         self.attn = None
         self.dropout = nn.Dropout(p=dropout)
 
@@ -289,9 +302,9 @@ class MultiHeadedAttention(nn.Module):
         if mask is not None:
             mask = mask.unsqueeze(1)
         nbatches = query.size(0)
-        query, key, value = [l(x).view(nbatches,-1,self.h, self.d_k).transpose(1,2) for l,x in zip(self.linears, (query, key, value))]
-        x,self.attn = attention(query, key, value, mask=mask, dropout=self.dropout)
-        x = x.transpose(1,2).contiguous().view(nbatches, -1, self.h*self.d_k)
+        query, key, value = [l(x).view(nbatches, -1, self.h, self.d_k).transpose(1, 2) for l, x in zip(self.linears, (query, key, value))]
+        x, self.attn = attention(query, key, value, mask=mask, dropout=self.dropout)
+        x = x.transpose(1, 2).contiguous().view(nbatches, -1, self.h*self.d_k)
         return self.linears[-1](x)
 
 

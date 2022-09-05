@@ -7,7 +7,7 @@ from torch.utils.data import Dataset
 
 
 def check_exists(folder_name, file_name) -> bool:
-    """Checks file with specified name exists in folder_name"""
+    """Checks if file with specified name exists in folder_name"""
     return os.path.exists(os.path.join(folder_name, file_name))
 
 
@@ -40,7 +40,7 @@ class DtiDataset(Dataset, ABC):
                  download_link: Optional[str] = None,
                  mode: str = 'train',
                  force_download: bool = False,
-                 return_type=None,
+                 return_type: list = None,
                  load_from_raw: bool = False) -> None:
         if return_type is None:
             return_type = ['DrugInd', 'ProtInd', 'Label']
@@ -116,7 +116,7 @@ class DtiDataset(Dataset, ABC):
         ...
 
     @abstractmethod
-    def __getitem__(self, index: int) -> Tuple:
+    def __getitem__(self, index: int) -> tuple:
         """
         Parameters
         ----------

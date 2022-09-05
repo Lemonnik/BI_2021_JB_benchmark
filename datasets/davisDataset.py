@@ -28,7 +28,7 @@ class Davis(DatasetWithLabelEncoder):
                  root: str,
                  mode: str = 'train',
                  force_download: bool = False,
-                 return_type=None,
+                 return_type: list = None,
                  load_from_raw: bool = False) -> None:
         if return_type is None:
             return_type = ['DrugInd', 'ProtInd', 'Label']

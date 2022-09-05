@@ -25,12 +25,37 @@ class MolTransModel(DtiModel, nn.Sequential):
 
     Notes
     -----
-    All code is taken from authors' original GitHub with non-significant changes
+    All code is adapted from authors' original GitHub
     https://github.com/kexinhuang12345/MolTrans
 
     Parameters
     ----------
-    TODO: fill in the gaps )((
+    max_d : int
+        The maximum length of sequence for drug.
+    max_p : int
+        The maximum length of sequence for protein.
+    emb_size : int
+        Input embedding size.
+    dropout_rate : float
+
+    batch_size : int
+    input_dim_drug : int
+        Number of drug sub-structures. TODO: should be unique for each dataset!
+    input_dim_target : int
+        Number of protein sub-structures. TODO: should be unique for each dataset!
+
+    hidden_size : int
+        Input embedding size.
+    intermediate_size : int
+        Intermediate dimension of each.
+    num_attention_heads : int
+        Number of attention heads for each transformer encoder.
+    attention_probs_dropout_prob : float
+        Dropout rate for attention heads.
+    hidden_dropout_prob : float
+        Final dropout rate.
+    flatten_dim : int
+        Original dimension. TODO: isn't it unique for each dataset?
     """
 
     def __init__(self, **config):
@@ -44,11 +69,11 @@ class MolTransModel(DtiModel, nn.Sequential):
         self.dropout_rate = config['dropout_rate']
 
         # densenet
-        self.scale_down_ratio = config['scale_down_ratio']
-        self.growth_rate = config['growth_rate']
-        self.transition_rate = config['transition_rate']
-        self.num_dense_blocks = config['num_dense_blocks']
-        self.kernal_dense_size = config['kernal_dense_size']
+        # self.scale_down_ratio = config['scale_down_ratio']
+        # self.growth_rate = config['growth_rate']
+        # self.transition_rate = config['transition_rate']
+        # self.num_dense_blocks = config['num_dense_blocks']
+        # self.kernal_dense_size = config['kernal_dense_size']
         self.batch_size = config['batch_size']
         self.input_dim_drug = config['input_dim_drug']
         self.input_dim_target = config['input_dim_target']
@@ -193,7 +218,8 @@ class LayerNorm(nn.Module):
 
 
 class Embeddings(nn.Module):
-    """Construct the embeddings from protein/target, position embeddings.
+    """
+    Construct the embeddings from protein/target, position embeddings.
     """
 
     def __init__(self, vocab_size, hidden_size, max_position_size, dropout_rate):

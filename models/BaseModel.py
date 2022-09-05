@@ -14,7 +14,7 @@ class DtiModel(Module, ABC):
         return next(self.parameters()).device
 
     @property
-    def return_type(self):
+    def return_type(self) -> list:
         """
 
         Returns
