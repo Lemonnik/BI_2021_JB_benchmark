@@ -9,5 +9,5 @@ preprocess_params:
   radius: 2
   ngram: 3
 batch_size: 1
-n_epoch: 5
+n_epochs: 5
 print_every: 1

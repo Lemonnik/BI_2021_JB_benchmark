@@ -1,0 +1,42 @@
+name: DTI_GAT
+batch_size: 64
+n_epochs: 10000
+print_every: 1
+model_params:
+  lr: 0.0005
+  weight_decay: 5e-4
+  dropout: 0.3
+  model_dir: './enzyme_model_com3'
+  crossvalidation: 1
+
+  ###############################################################
+  # Model hyper setting
+  # Protein_NN
+  protein_ninput: 220
+  pnn_nlayers: 1
+  pnn_nhid: []
+
+  # Drug_NN
+  drug_ninput: 881
+  dnn_nlayers: 1
+  dnn_nhid: []
+
+  # GAT
+  gat_type: 'PyG'
+  gat_ninput: 256
+  gat_nhid: 256
+  gat_noutput: 256
+  gat_nheads: 8
+  gat_negative_slope: 0.2
+
+  # Decoder
+  DTI_nn_nlayers: 3
+  DTI_nn_nhid: [256,256,256]
+
+  ###############################################################
+  # data
+  dataset: 'enzyme'
+  common_neighbor: 3
+  sample_num: 300
+preprocess_params:
+  None

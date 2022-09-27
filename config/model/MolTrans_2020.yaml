@@ -23,4 +23,4 @@ preprocess_params:
   max_drug_seq: 50
   max_protein_seq: 545
 batch_size: 16
-epoch: 10
+n_epochs: 10
