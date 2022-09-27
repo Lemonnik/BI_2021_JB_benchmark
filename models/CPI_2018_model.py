@@ -20,20 +20,32 @@ class CpiModel(DtiModel):
 
     Notes
     -----
-    All code is taken from authors' orignal github with small changes
+    All code is adapted from authors' original GitHub
     https://github.com/masashitsubaki/CPI_prediction
 
     Parameters
     ----------
-    dim: int
+    dim : int
         Dimension of embedding space.
-    n_filters: int
-        Number of filters used for convolution.
-    n_entities: int
-        Number of entities in the current data set.
-    n_relations: int
-        Number of relations in the current data set.
-
+    n_word : int
+        Proteins are defined as n-gram (or n_word) amino acids.
+        Each protein is split into an overlapping n-gram amino acid sequence (split into words)
+        in order to obtain low-dimensional real-valued vector representations of protein sequence.
+            E.x. if n_word = 3 then: MAAVRM...LDLK → "MAA", "AAV", "AVR", ..., "LDL", "DLK".
+            Each triplet called a word.
+    window : int
+        Defines how many words are going to be concatenated before sending to CNN.
+        E.x. if window = 3, then "MAA", "AAV", "AVR", "LDL", "DLK" will be concatenated as
+        ["MAA"; "AAV"; "AVR"], ["AAV"; "AVR"; "LDL"], ["AVR"; "LDL"; "DLK"]
+    n_fingerprint : int
+        Number of different fingerprints (combinations of particular atom and its neighborhood)
+        that were extracted in CPI_2018_preprocess.py during preprocessing stage.
+    layer_gnn : int
+        Number of time steps in GNN.
+    layer_cnn : int
+        Number of layers in CNN.
+    layer_output : int
+        Number of layers that learn on concatenated compound and protein vectors.
     """
 
     def __init__(self, 
@@ -79,12 +91,23 @@ class CpiModel(DtiModel):
         return torch.unsqueeze(torch.mean(xs, 0), 0)
 
     def attention_cnn(self, x, xs, layer):
-        """The attention mechanism is applied to the last layer of CNN."""
+        """
+        The attention mechanism is applied to the last layer of CNN.
+
+        Parameters
+        ----------
+        x :
+            Compound vector.
+        xs :
+            Word vectors.
+        layer : int
+            layer_cnn (number of layers in CNN).
+        """
 
         # ADD some dimensions to word-embeddings
         xs = torch.unsqueeze(torch.unsqueeze(xs, 0), 0)
         # xs = torch.unsqueeze(xs, 0)
-        # Some convolution layers + Nonlinearity for word-embeddings
+        # Some convolution layers + Non-linearity for word-embeddings
         # kernel_size=2*window+1, padding=window
         # where WINDOW -- how many embedded words need to be concatenated (section 4.1)
         for i in range(layer):
@@ -92,12 +115,12 @@ class CpiModel(DtiModel):
         # REMOVE dimensions
         xs = torch.squeeze(torch.squeeze(xs, 0), 0)
 
-        # get scalar values -- weights for neural attention mechamism
+        # get scalar values -- weights for neural attention mechanism
         # W_attention -- weight matrix W_inter
         h = torch.relu(self.W_attention(x))
         hs = torch.relu(self.W_attention(xs))
-        # for each WORD we get weight -- attention -- interaction strength between a molecule and the subsequence of a protein (WORD)
-        # (formula 10)
+        # for each WORD we get weight -- attention -- interaction strength between a molecule and the subsequence of
+        # a protein (WORD) (formula 10)
         weights = torch.tanh(F.linear(h, hs))
         # weighted sum of H_i
         ys = torch.t(weights) * hs
@@ -132,9 +155,10 @@ class CpiModel(DtiModel):
 
         return interaction
 
-    def __call__(self, data, train=True, device='cpu'):
+    def __call__(self, data, train=True):
 
         inputs, correct_interaction = data[:-1], data[-1]
+        device = self.device
 
         # (6 lines of preprocessing added)
         fingerprints, adjacency, words = inputs

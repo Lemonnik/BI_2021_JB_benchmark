@@ -72,7 +72,7 @@ class DistMult(DtiModel):
         )
         return scores
 
-    def __call__(self, data, train=True, device='cpu'):
+    def __call__(self, data, train=True):
         head_indices, tail_indices, relation_indices = data
         head_indices = head_indices.type(torch.LongTensor).to(self.device)
         tail_indices = tail_indices.type(torch.LongTensor).to(self.device)

@@ -1,5 +1,6 @@
 import logging
 import os
+import pickle
 from typing import List
 from urllib.error import URLError
 
@@ -27,12 +28,13 @@ class Davis(DatasetWithLabelEncoder):
                  root: str,
                  mode: str = 'train',
                  force_download: bool = False,
-                 return_type=None) -> None:
+                 return_type: list = None,
+                 load_from_raw: bool = False) -> None:
         if return_type is None:
             return_type = ['DrugInd', 'ProtInd', 'Label']
         self.label_encoder = LabelEncoder()
         self._label_encoder_path = None
-        super().__init__(root, self._download_link, mode, force_download, return_type)
+        super().__init__(root, self._download_link, mode, force_download, return_type, load_from_raw)
 
     def _load_raw_data(self) -> None:
         logger.debug("Loading data...")
@@ -55,26 +57,29 @@ class Davis(DatasetWithLabelEncoder):
         logger.debug("LOADED!")
 
     def _load_processed_data(self) -> None:
-        # """Load processed data (if exist) and store features in self.features dictionary."""
-        # if os.path.exists(self._label_encoder_path) or self.download_from_url:
-        #     logger.debug("Loading existing label encoder...")
-        #     with open(self._label_encoder_path, 'rb') as le_dump_file:
-        #         self.label_encoder = pickle.load(le_dump_file)
-        #     logger.debug("Loaded successfully.\n")
-        #     # attribute
-        #     self._n_entities = len(self.label_encoder.classes_)
-        # else:
-        #     self._encode_by_ind(entities=)
-        raise NotImplementedError()
+        """Load processed data (if exist) and store features in `self.features` dictionary."""
 
-    def _update_processed_data(self) -> None:
-        """Update processed data (rewrite files train/val/test.csv"""
-        raise NotImplementedError()
+        # load features
+        self.features = {}
+        df = pd.read_csv(os.path.join(self.processed_folder, self._stored_files['full']), index_col=0)
+        for col in df.columns:
+            self.add_feature(feat_name=col, feat_values=df[col].values.tolist())
+
+        # load encodings
+        self._load_label_encoder()
+
+    # I guess this function is unnecessary
+    #
+    # def _update_processed_data(self) -> None:
+    #     """Update processed data (rewrite files train/val/test.csv"""
+    #     raise NotImplementedError()
 
     def _save_processed_data(self) -> None:
-        """Save processed data in processed_folder (rewrite files train/val/test.csv)."""
-        # with open(os.path.join(self.processed_folder, ), "") as :
-        pass
+        """Save processed data in processed_folder (rewrites file every time)."""
+        os.makedirs(self.processed_folder, exist_ok=True)
+
+        df = pd.DataFrame.from_dict(self.features)
+        df.to_csv(os.path.join(self.processed_folder, self._stored_files['full']))
 
     def download_from_url(self) -> None:
         """Download the data if it doesn't exist already."""

@@ -6,7 +6,7 @@ authors = ["Dmitrii Traktirov <ds.traktirov@gmail.com>", "Ellen Kartysheva <>"]
 
 [tool.poetry.dependencies]
 dgl = "0.6.*"
-hydra-core = "^1.1.1"
+hydra-core = ">=1.2"
 pandas = "1.3.5"
 python = "3.8.*"
 numpy = "1.21.6"

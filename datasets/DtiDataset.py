@@ -7,7 +7,7 @@ from torch.utils.data import Dataset
 
 
 def check_exists(folder_name, file_name) -> bool:
-    """Checks file with specified name exists in folder_name"""
+    """Checks if file with specified name exists in folder_name"""
     return os.path.exists(os.path.join(folder_name, file_name))
 
 
@@ -30,6 +30,9 @@ class DtiDataset(Dataset, ABC):
     return_type : list[str]
         Defines what features will be returned by ``__getitem__``.
         All features must be in ``self.features`` dictionary.
+    load_from_raw : bool
+        If FALSE, program tries to load processed data, if exist.
+        Otherwise -- load raw data even if processed data exist.
     """
 
     def __init__(self,
@@ -37,7 +40,8 @@ class DtiDataset(Dataset, ABC):
                  download_link: Optional[str] = None,
                  mode: str = 'train',
                  force_download: bool = False,
-                 return_type=None) -> None:
+                 return_type: list = None,
+                 load_from_raw: bool = False) -> None:
         if return_type is None:
             return_type = ['DrugInd', 'ProtInd', 'Label']
         if isinstance(root, torch._six.string_classes):
@@ -55,7 +59,7 @@ class DtiDataset(Dataset, ABC):
             self._load_raw_data()
         else:
             # TODO change folder to preprocessed folder
-            if os.path.exists(self.raw_folder):
+            if os.path.exists(self.processed_folder) and not load_from_raw:
                 try:
                     self._load_processed_data()
                     return
@@ -68,11 +72,11 @@ class DtiDataset(Dataset, ABC):
                     return
                 except (FileNotFoundError, IOError):
                     # Todo: Create class for loading error
-                    print("Processed data not found. Loading from raw data.")
+                    print("Raw data not found. Trying to download dataset via URL.")
             self.download_from_url()
             self._load_raw_data()
 
-    def add_feature(self, feat_name: str, feat_values: list) -> None:
+    def add_feature(self, feat_name: str, feat_values: list, save: Optional[bool] = False) -> None:
         """
         Adds new feature.
 
@@ -82,17 +86,20 @@ class DtiDataset(Dataset, ABC):
             Name of the feature.
         feat_values : list
             Column values.
+        save : bool
+            Whether to save the result dataset with new feature in `self.processed_folder` or not.
         """
 
         # TODO: add many features with one function call
 
         self.features[feat_name] = feat_values
-        self._save_processed_data()
+        if save:
+            self._save_processed_data()
 
     @abstractmethod
     def _save_processed_data(self) -> None:
         """Save processed data in processed_folder."""
-        pass
+        ...
 
     @abstractmethod
     def _load_raw_data(self) -> None:
@@ -109,7 +116,7 @@ class DtiDataset(Dataset, ABC):
         ...
 
     @abstractmethod
-    def __getitem__(self, index: int) -> Tuple:
+    def __getitem__(self, index: int) -> tuple:
         """
         Parameters
         ----------

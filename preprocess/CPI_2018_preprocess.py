@@ -184,7 +184,7 @@ def cpi_preprocess(dataset, radius=2, ngram=3):
     """Add features to dataset."""
     dataset.add_feature(feat_name="compounds", feat_values=all_compounds)
     dataset.add_feature(feat_name="adjacencies", feat_values=all_adjacency)
-    dataset.add_feature(feat_name="proteins", feat_values=all_proteins)
+    dataset.add_feature(feat_name="proteins", feat_values=all_proteins, save=True)
     dataset.fingerprint_dict = fingerprint_dict
     dataset.word_dict = word_dict
 

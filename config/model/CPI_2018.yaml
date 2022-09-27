@@ -1,0 +1,13 @@
+name: CPI_2018
+model_params:
+  dim: 10
+  layer_gnn: 3
+  layer_cnn: 3
+  window: 11
+  layer_output: 3
+preprocess_params:
+  radius: 2
+  ngram: 3
+batch_size: 1
+n_epoch: 5
+print_every: 1
